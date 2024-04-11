@@ -103,7 +103,7 @@ def get_config_set_of_trials():
 def get_config_visualizer():
     config = dict(
         model_name = 'vEEGNet',
-        model_config = cm.cm.get_config_vEEGNet(),
+        model_config = cm.get_config_vEEGNet(),
     )
 
     return config
