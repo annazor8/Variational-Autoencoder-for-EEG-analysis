@@ -1,50 +1,73 @@
-"""
-Example of training script for hvEEGNet with external data and without wandb tracking
-
-@author : Alberto (Jesus) Zancanaro
-@organization : University of Padua
-"""
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Imports
-
-import numpy as np
+import mne
+from mne.io import Raw
 import torch
 
 from library.dataset import dataset_time as ds_time
 from library.model import hvEEGNet
 from library.training import train_generic
-
 from library.config import config_training as ct
 from library.config import config_model as cm
+import os
+import mne
+import numpy as np
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Specific parameters to change inside the dictionary
+# Directory containing the EDF files
+directory_path = '/home/azorzetto/data1/TCParRidotto'
+channels_to_set=['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF', 'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG T3-REF', 'EEG T4-REF', 'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF', 'EEG EKG1-REF', 'EEG T1-REF', 'EEG T2-REF']
+# List all files in the directory
+all_files = os.listdir(directory_path)
+
+# Filter out only EDF files
+edf_files = [file for file in all_files if file.endswith('.edf')]
+
+data=[] #I create a tuple where to store the arrays
+# Process each EDF file
+for file_name in edf_files:
+    file_path = os.path.join(directory_path, file_name)
+    try:
+        # Load the EDF file
+        tmp = mne.io.read_raw_edf(file_path)
+        #common channel set
+        ch = tmp.ch_names
+        ch_drop = [cc for cc in ch if cc not in channels_to_set]
+        tmp = tmp.drop_channels(ch_drop)
+        tmp = tmp.reorder_channels(channels_to_set)
+        #resample to standardize sampling frequency to 250 Hz
+        tmp=tmp.resample(250)
+        # Get the data as a NumPy array (if needed)
+        tmp_array = tmp.get_data()
+        data.append(tmp_array)
+
+    except Exception as e:
+        print(f"Failed to load {file_name}: {e}")
+
+dataset=np.empty((3,1,22,1000))
+i=0
+for el in data:
+
+    start = np.random.randint(0, (el.shape[1])-1000)
+    tmp1=el[:,start:start+1000]
+    tmp1 = tmp1.reshape(1, tmp1.shape[0], tmp1.shape[1])
+    dataset[i,:,:,:] = tmp1
+    i=i+1
+
+# Check the shape of the final dataset
+print("Final dataset shape:", dataset.shape)
+
+np.random.shuffle(dataset)
+train_data=dataset[0:2,:,:,:] #(1, 1, 22, 1000)
+validation_data=dataset[2:,:,:,:] #(1, 1, 22, 1000)
+train_label = np.random.randint(0, 4, train_data.shape[0])
+validation_label = np.random.randint(0, 4, validation_data.shape[0])
+train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
+validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
+
+# Get training config
+train_config = ct.get_config_hierarchical_vEEGNet_training()
 
 epochs = 2
 path_to_save_model = 'model_weights_backup'
 epoch_to_save_model = 1
-
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Get data and train config
-
-# Create synthetic data
-train_data = np.random.rand(100, 1 , 3, 1000) #Shape:(100, 1, 3, 1000) interi tra 0 e 1 
-validation_data = np.random.rand(100, 1 , 3, 1000) #Shape:(100, 1, 3, 1000) interi tra 0 e 1 
- 
-# Create channel lists
-ch_list = ['C3', 'C5', 'C6'] 
-
-# Create synthetic label
-train_label = np.random.randint(0, 4, train_data.shape[0]) #Shape:(100,) interi tra 0 e 4
-validation_label = np.random.randint(0, 4, validation_data.shape[0]) #Shape:(100,) interi tra 0 e 4
-
-# Create train and validation dataset
-train_dataset = ds_time.EEG_Dataset(train_data, train_label, ch_list)
-validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, ch_list)
-
-# Get training config
-train_config = ct.get_config_hierarchical_vEEGNet_training()
 
 # Update train config
 train_config['epochs'] = epochs

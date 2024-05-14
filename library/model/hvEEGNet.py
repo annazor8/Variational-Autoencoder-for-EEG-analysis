@@ -14,7 +14,7 @@ import numpy as np
 from scipy.spatial.distance import euclidean
 # from fastdtw import fastdtw
 
-from . import vEEGNet, hierarchical_VAE
+from . import vEEGNet, hierarchical_VAE 
 from ..training.soft_dtw_cuda import SoftDTW
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
