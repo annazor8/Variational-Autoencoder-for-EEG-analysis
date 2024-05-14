@@ -100,10 +100,10 @@ def get_config_set_of_trials():
     return config
 
 
-def get_config_visualizer():
+def get_config_visualizer(C : int, T : int, hidden_space : int, type_encoder : int, type_decoder : int):
     config = dict(
         model_name = 'vEEGNet',
-        model_config = cm.cm.get_config_vEEGNet(),
+        model_config = cm.get_config_vEEGNet(C, T, hidden_space, type_encoder, type_decoder),
     )
 
     return config
