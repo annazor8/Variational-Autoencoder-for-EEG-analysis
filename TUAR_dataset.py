@@ -11,6 +11,7 @@ import os
 import mne
 import numpy as np
 
+np.random.seed(43) 
 # Directory containing the EDF files
 directory_path = '/home/azorzetto/data1/TCParRidotto'
 channels_to_set=['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF', 'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG T3-REF', 'EEG T4-REF', 'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF', 'EEG EKG1-REF', 'EEG T1-REF', 'EEG T2-REF']
@@ -20,7 +21,7 @@ all_files = os.listdir(directory_path)
 # Filter out only EDF files
 edf_files = [file for file in all_files if file.endswith('.edf')]
 
-data=[] #I create a tuple where to store the arrays
+data=[] #I create a list where to store the arrays. Each array corresponds to an EDF file channel x time_sampel
 # Process each EDF file
 for file_name in edf_files:
     file_path = os.path.join(directory_path, file_name)
@@ -35,30 +36,53 @@ for file_name in edf_files:
         #resample to standardize sampling frequency to 250 Hz
         tmp=tmp.resample(250)
         # Get the data as a NumPy array (if needed)
-        tmp_array = tmp.get_data()
-        data.append(tmp_array)
-
+        #tmp_array = tmp.get_data()
+        #data.append(tmp_array)
+        epochs = mne.make_fixed_length_epochs(tmp, duration=4, preload=True, overlap=1)
+        tmp1=epochs.get_data()
+        tmp1=tmp1.reshape(tmp1.shape[0],1,tmp1.shape[1],tmp1.shape[2])
+        np.random.shuffle(tmp1) #shuffle along the first dimension, so shuffle the trials 
+        data.append(tmp1)
     except Exception as e:
         print(f"Failed to load {file_name}: {e}")
 
-dataset=np.empty((3,1,22,1000))
-i=0
-for el in data:
 
-    start = np.random.randint(0, (el.shape[1])-1000)
-    tmp1=el[:,start:start+1000]
-    tmp1 = tmp1.reshape(1, tmp1.shape[0], tmp1.shape[1])
-    dataset[i,:,:,:] = tmp1
-    i=i+1
+#the input data is a 4D matrix representing either the training set or the validation set of one or multiple subject(s)
+def normalization_z3(data):
 
-# Check the shape of the final dataset
-print("Final dataset shape:", dataset.shape)
+    mean= np.mean(data)
+    std=np.std(data)
+    data=(data - mean)/std
+    return data
 
-np.random.shuffle(dataset)
-train_data=dataset[0:2,:,:,:] #(1, 1, 22, 1000)
-validation_data=dataset[2:,:,:,:] #(1, 1, 22, 1000)
+#the normalization z2 is performed on each subject or session regardless the training/test set split. In our case it's the same because the trinaing se tis composed by only 1 subject for now
+#in this case data should be a list of 4d arrays: each array is corresponding to a subject
+def normalization_z2(data):
+    for i, el in enumerate(data):
+        norm_el=normalization_z3(el)
+        if i==0:
+            final=norm_el
+        else:
+            final=np.concatenate((final, norm_el), axis=0)
+    return final
+#set the subject on whose eeg to train
+subject_test=0
+subject_train=1,2
+dataset=[data[i] for i in subject_train]
+#normalize using the z3 normalization: all the elements in the training set 
+train_data=normalization_z2(dataset)
+
+train_size = int(0.8 * dataset.shape[0])  # 80% for training
+val_size = dataset.shape[0] - train_size  # 20% for validation
+
+#split the dataset into training and validation, respectively 80% and 20%
+train_data=dataset[0:train_size,:,:,:] #(1, 1, 22, 1000)
+validation_data=dataset[train_size:,:,:,:] #(1, 1, 22, 1000)
+
+#create random labels since they are not useful for the training part 
 train_label = np.random.randint(0, 4, train_data.shape[0])
 validation_label = np.random.randint(0, 4, validation_data.shape[0])
+
 train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
 validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
 
@@ -123,3 +147,9 @@ model.to(train_config['device'])
 
 model = train_generic.train(model, loss_function, optimizer,
                             loader_list, train_config, lr_scheduler, model_artifact = None)
+
+#-------------------------------------------------
+#RECONSTRUCTION
+ch_to_plot='EEG FP2-REF'
+x_eeg=data[subject_test]
+x_r_eeg = model.reconstruct(x_eeg)
