@@ -1,7 +1,8 @@
 import mne
 from mne.io import Raw
 import torch
-
+from numpy.typing import NDArray
+from typing import Dict, List, Tuple
 from library.dataset import dataset_time as ds_time
 from library.model import hvEEGNet
 from library.training import train_generic
@@ -10,52 +11,51 @@ from library.config import config_model as cm
 import os
 import mne
 import numpy as np
-
+import random
+import pandas as pd
+from collections import defaultdict
 np.random.seed(43) 
 # Directory containing the EDF files
 directory_path = '/home/azorzetto/data1/TCParRidotto'
 channels_to_set=['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF', 'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG T3-REF', 'EEG T4-REF', 'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF', 'EEG EKG1-REF', 'EEG T1-REF', 'EEG T2-REF']
 # List all files in the directory
 all_files = os.listdir(directory_path)
-
 # Filter out only EDF files
 edf_files = [file for file in all_files if file.endswith('.edf')]
 
-data=[] #I create a list where to store the arrays. Each array corresponds to an EDF file channel x time_sampel
+# data structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
+session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
+#data=[] #I create a list where to store the arrays. Each array corresponds to an EDF file channel x time_sampel
 # Process each EDF file
-for file_name in edf_files:
+for file_name in sorted(edf_files):
     file_path = os.path.join(directory_path, file_name)
-    try:
-        # Load the EDF file
-        tmp = mne.io.read_raw_edf(file_path)
-        #common channel set
-        ch = tmp.ch_names
-        ch_drop = [cc for cc in ch if cc not in channels_to_set]
-        tmp = tmp.drop_channels(ch_drop)
-        tmp = tmp.reorder_channels(channels_to_set)
-        #resample to standardize sampling frequency to 250 Hz
-        tmp=tmp.resample(250)
-        # Get the data as a NumPy array (if needed)
-        #tmp_array = tmp.get_data()
-        #data.append(tmp_array)
-        epochs = mne.make_fixed_length_epochs(tmp, duration=4, preload=True, overlap=1)
-        tmp1=epochs.get_data()
-        tmp1=tmp1.reshape(tmp1.shape[0],1,tmp1.shape[1],tmp1.shape[2])
-        np.random.shuffle(tmp1) #shuffle along the first dimension, so shuffle the trials 
-        data.append(tmp1)
-    except Exception as e:
-        print(f"Failed to load {file_name}: {e}")
+    sub_id, session, time = file_name.split(".")[0].split("_") #split the filname into subject, session and time frame
+    raw_mne = mne.io.read_raw_edf(file_path)  # Load the EDF file
+    raw_mne = raw_mne.reorder_channels(channels_to_set) #reorders the channels and drop the ones not contained in channels_to_set
+    raw_mne=raw_mne.resample(250) #resample to standardize sampling frequency to 250 Hz
+    epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=True, overlap=3) #divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
+    epoch_data = epochs_mne.get_data() #trasform the raw eeg into a 3d np array
+    epoch_data = np.expand_dims(epoch_data, 1) # number of epochs for that signal x 1 x channels x time samples 
+
+    # If session_data[sub_id][session] exists, concatenate
+    if session_data[sub_id][session].size > 0:
+        session_data[sub_id][session] = np.concatenate([session_data[sub_id][session], epoch_data], axis=-1)
+    else:
+        session_data[sub_id][session] = epoch_data
+    
+    #data.append(epoch_data)
 
 
-#the input data is a 4D matrix representing either the training set or the validation set of one or multiple subject(s)
-def normalization_z3(data):
+#the input data is a 4D matrix representing either the training set or the test set of one or multiple subject(s)
+def normalization_z3(data: NDArray):
 
     mean= np.mean(data)
     std=np.std(data)
     data=(data - mean)/std
     return data
 
-#the normalization z2 is performed on each subject or session regardless the training/test set split. In our case it's the same because the trinaing se tis composed by only 1 subject for now
+#the normalization z2 is performed on each subject or session regardless the training/test set split. 
+# In our case it's the same because the trinaing set is composed by only 1 subject for now
 #in this case data should be a list of 4d arrays: each array is corresponding to a subject
 def normalization_z2(data):
     for i, el in enumerate(data):
@@ -65,11 +65,57 @@ def normalization_z2(data):
         else:
             final=np.concatenate((final, norm_el), axis=0)
     return final
-#set the subject on whose eeg to train
-subject_test=0
-subject_train=1,2
-dataset=[data[i] for i in subject_train]
-#normalize using the z3 normalization: all the elements in the training set 
+
+session_data_normalized = defaultdict(lambda: defaultdict(list))
+for subj in session_data:
+    for session, listdata in session_data[subj]:
+        session_data_normalized[subj][session] = normalization_z3(data=listdata[0])
+
+#leave one session out from the training for testing BUT we have to set the subject 
+def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], subject: str, shuffle: bool): #-> np.ndarray, np.ndarray, np.ndarray
+    dict_sessions=session_data[subject] #dict {'string_session': np_ndarray}
+    number_of_sessions=len(dict_sessions)
+    #if for that subject i have only one session i split that session data into train and test set
+    if number_of_sessions == 1:
+        data_session=dict_sessions.values()[0]
+        test_size = int(0.2 * data_session.shape[0])
+        test_data=data_session[0:test_size,:,:,:]
+        train_val_session=data_session[test_size:,:,:,:]
+        if shuffle==True:
+            train_val_session=random.shuffle(train_val_session)
+        train_size=int(0.8 * train_val_session.shape[0])
+        train_data=train_val_session[0:train_size,:,:,:]
+        val_data=train_val_session[train_size,:,:,:]
+    #if for that subject i have more than one session i can use one for test and the other(s) for training
+    else: 
+        test_session_index=random.randint(0, number_of_sessions)
+        test_data=dict_sessions.pop(test_session_index) #pop removes the entry at that index from the dictionary and returns its value 
+        train_val_session=np.concatenate(dict_sessions) #concatenate all the remaning arrays for training and validation 
+        train_size = int(0.8 * train_val_session.shape[0])
+        if shuffle==True:
+            train_val_session=random.shuffle(train_val_session)
+        train_data=train_val_session[0:train_size,:,:,:]
+        val_data=train_val_session[train_size:,:,:,:]
+    
+    train_label = np.random.randint(0, 4, train_data.shape[0])
+    validation_label = np.random.randint(0, 4, val_data.shape[0])
+    return test_data, train_data, val_data, train_label, validation_label
+
+def leave_one_subject_out(session_data, shuffle: bool):
+    list_subj=session_data.keys() #list of subjects name
+    test_subject_index=np.random.randint(0, len(list_subj)) #random subject to keep as a test subject
+    test_entry=session_data.pop(list_subj[test_subject_index]) #remove and return the {Dict[str, np.ndarray]}
+    test_data=np.concatenate(test_entry.value()) #concatenates the array of the same subject but different sessions 
+    train_val_data=np.concatenate(session_data.value().value())
+    if shuffle==True:
+        train_val_data=random.shuffle(train_val_data)
+    train_size=int(0.8 * train_val_data.shape[0])
+    train_data=train_val_data[0:train_size,:,:,:]
+    val_data=train_val_data[train_size:,:,:,:]
+    train_label = np.random.randint(0, 4, train_data.shape[0])
+    validation_label = np.random.randint(0, 4, val_data.shape[0])
+    return test_data, train_data,val_data, train_label, validation_label, list_subj[test_subject_index]
+
 train_data=normalization_z2(dataset)
 
 train_size = int(0.8 * dataset.shape[0])  # 80% for training
@@ -153,3 +199,24 @@ model = train_generic.train(model, loss_function, optimizer,
 ch_to_plot='EEG FP2-REF'
 x_eeg=data[subject_test]
 x_r_eeg = model.reconstruct(x_eeg)
+
+"""
+daf=[]
+for file in edf_files:
+    daf.append({'name': file.split('_')[0], 'trial': file.split('_')[1], 'session': file.split('_')[2]})
+df = pd.DataFrame(daf)
+print(df)
+
+trials_counts = df.groupby('name')['trial'].nunique().reset_index()
+trials_counts.columns = ['name', 'unique_trial_count']
+frequency_counts = trials_counts['unique_trial_count'].value_counts().reset_index()
+# Rename the columns for clarity
+frequency_counts.columns = ['unique_trial_count', 'frequency']
+print(frequency_counts)
+
+session_counts = df.groupby(['name', 'trial'])['session'].nunique().reset_index()
+session_counts.columns = ['name', 'trial', 'unique_session_count']
+frequency_counts = session_counts['unique_session_count'].value_counts().reset_index()
+# Rename the columns for clarity
+frequency_counts.columns = ['unique_session_count', 'frequency']
+print(frequency_counts)"""
