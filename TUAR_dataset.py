@@ -72,10 +72,11 @@ for subj in session_data:
         session_data_normalized[subj][session] = normalization_z3(data=listdata[0])
 
 #leave one session out from the training for testing BUT we have to set the subject 
-def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], subject: str, shuffle: bool): #-> np.ndarray, np.ndarray, np.ndarray
-    dict_sessions=session_data[subject] #dict {'string_session': np_ndarray}
-    number_of_sessions=len(dict_sessions)
-    #if for that subject i have only one session i split that session data into train and test set
+def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], shuffle: bool = True): #-> np.ndarray, np.ndarray, np.ndarray
+   list_dict_session=session_data.value()
+   all_sessions=[]
+   all_sessions = [el['key'] for el in list_dict_session]
+    
     if number_of_sessions == 1:
         data_session=dict_sessions.values()[0]
         test_size = int(0.2 * data_session.shape[0])
@@ -101,7 +102,7 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], subjec
     validation_label = np.random.randint(0, 4, val_data.shape[0])
     return test_data, train_data, val_data, train_label, validation_label
 
-def leave_one_subject_out(session_data, shuffle: bool):
+def leave_one_subject_out(session_data, subject: str = None, shuffle: bool=True):
     list_subj=session_data.keys() #list of subjects name
     test_subject_index=np.random.randint(0, len(list_subj)) #random subject to keep as a test subject
     test_entry=session_data.pop(list_subj[test_subject_index]) #remove and return the {Dict[str, np.ndarray]}
