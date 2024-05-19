@@ -16,7 +16,10 @@ import pandas as pd
 from collections import defaultdict
 np.random.seed(43) 
 # Directory containing the EDF files
-directory_path = '/home/azorzetto/data1/TCParRidotto'
+#directory_path='C:\Users\albin\OneDrive\Desktop\TCParRidotto'
+directory_path = r'C:\Users\albin\OneDrive\Desktop\TCParRidotto'
+
+#directory_path = '/home/azorzetto/data1/TCParRidotto'
 channels_to_set=['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF', 'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG T3-REF', 'EEG T4-REF', 'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF', 'EEG EKG1-REF', 'EEG T1-REF', 'EEG T2-REF']
 # List all files in the directory
 all_files = os.listdir(directory_path)
@@ -46,14 +49,6 @@ for file_name in sorted(edf_files):
     #data.append(epoch_data)
 
 
-#the input data is a 4D matrix representing either the training set or the test set of one or multiple subject(s)
-def normalization_z3(data: NDArray):
-
-    mean= np.mean(data)
-    std=np.std(data)
-    data=(data - mean)/std
-    return data
-
 #the normalization z2 is performed on each subject or session regardless the training/test set split. 
 # In our case it's the same because the trinaing set is composed by only 1 subject for now
 #in this case data should be a list of 4d arrays: each array is corresponding to a subject
@@ -71,64 +66,85 @@ for subj in session_data:
     for session, listdata in session_data[subj]:
         session_data_normalized[subj][session] = normalization_z3(data=listdata[0])
 
-#leave one session out from the training for testing BUT we have to set the subject 
-def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], shuffle: bool = True): #-> np.ndarray, np.ndarray, np.ndarray
-   list_dict_session=session_data.value()
-   all_sessions=[]
-   all_sessions = [el['key'] for el in list_dict_session]
-    
-    if number_of_sessions == 1:
-        data_session=dict_sessions.values()[0]
-        test_size = int(0.2 * data_session.shape[0])
-        test_data=data_session[0:test_size,:,:,:]
-        train_val_session=data_session[test_size:,:,:,:]
+#leave one session out from the training for testing
+#we are loosing the subject information level
+def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], normalization: str = None,shuffle: bool = True): #-> np.ndarray, np.ndarray, np.ndarray
+    #a list of the dictionaries [{session: arrays}, {session: arrays}, {session: arrays},...]  
+    if normalization == 'z2':
+        for subject, session_dict in session_data.items():
+            # Collect all session arrays for this subject
+            sessions_list = (session_dict.values())
+            # Concatenate all arrays to compute the mean and std
+            total_for_subject = np.concatenate(sessions_list)
+            mean = np.mean(total_for_subject)
+            std = np.std(total_for_subject)
+            # Normalize each session
+            for session_key in session_dict:
+                session_dict[session_key] = (session_dict[session_key] - mean) / std
+    list_sessions=session_data.keys()
+    list_dict_session=session_data.values(list_sessions)
+    all_sessions=[] #a list containing all sessions
+    for el in list_dict_session:
+        all_sessions=all_sessions.append(el.values())
+    test_size = int(0.2 * all_sessions.shape[0])
+    test_data=all_sessions[0:test_size]
+    train_val_data=all_sessions[test_size:]
+    if normalization=='z3':
+        total=np.concatenate(train_val_data)
+        mean= np.mean(total)
+        std=np.std(total)
+        for el in train_val_data:
+            el=el-mean
+            el=el/std
+    train_label = np.random.randint(0, 4, len(train_val_data)-1)
+    validation_label = np.random.randint(0, 4, 1)
+    #list of tuples containing the train data as the fist element and the validation data as the second element 
+    combinations=[]
+    for i in range (len(train_val_data)):
         if shuffle==True:
-            train_val_session=random.shuffle(train_val_session)
-        train_size=int(0.8 * train_val_session.shape[0])
-        train_data=train_val_session[0:train_size,:,:,:]
-        val_data=train_val_session[train_size,:,:,:]
-    #if for that subject i have more than one session i can use one for test and the other(s) for training
-    else: 
-        test_session_index=random.randint(0, number_of_sessions)
-        test_data=dict_sessions.pop(test_session_index) #pop removes the entry at that index from the dictionary and returns its value 
-        train_val_session=np.concatenate(dict_sessions) #concatenate all the remaning arrays for training and validation 
-        train_size = int(0.8 * train_val_session.shape[0])
-        if shuffle==True:
-            train_val_session=random.shuffle(train_val_session)
-        train_data=train_val_session[0:train_size,:,:,:]
-        val_data=train_val_session[train_size:,:,:,:]
+            train_val_data[i]=random.shuffle(train_val_data[i])
+        train_data = train_val_data[:i] + train_val_data[i+1:]
+        val_data=train_val_data[i]
+        combinations.append((test_data, train_data, val_data))
     
-    train_label = np.random.randint(0, 4, train_data.shape[0])
-    validation_label = np.random.randint(0, 4, val_data.shape[0])
-    return test_data, train_data, val_data, train_label, validation_label
+    return combinations, train_label, validation_label
 
-def leave_one_subject_out(session_data, subject: str = None, shuffle: bool=True):
-    list_subj=session_data.keys() #list of subjects name
-    test_subject_index=np.random.randint(0, len(list_subj)) #random subject to keep as a test subject
-    test_entry=session_data.pop(list_subj[test_subject_index]) #remove and return the {Dict[str, np.ndarray]}
-    test_data=np.concatenate(test_entry.value()) #concatenates the array of the same subject but different sessions 
-    train_val_data=np.concatenate(session_data.value().value())
-    if shuffle==True:
-        train_val_data=random.shuffle(train_val_data)
-    train_size=int(0.8 * train_val_data.shape[0])
-    train_data=train_val_data[0:train_size,:,:,:]
-    val_data=train_val_data[train_size:,:,:,:]
-    train_label = np.random.randint(0, 4, train_data.shape[0])
-    validation_label = np.random.randint(0, 4, val_data.shape[0])
-    return test_data, train_data,val_data, train_label, validation_label, list_subj[test_subject_index]
+def leave_one_subject_out(session_data, normalization:str = None, shuffle: bool=True):
+    subject_data_dict={}
+    for key, value in session_data.items():#key is the subj value is a dictionary 
+        # fixed key we are dealing with a subject 
+        new_value=np.concatenate(value.values()) #new value is the concatenation of a list of arrays representing the sessions for that subject
+        if normalization =='z2':
+            mean=np.mean(new_value)
+            std=np.std(new_value)
+            new_value=(new_value-mean)/std
 
-train_data=normalization_z2(dataset)
+    subject_data_dict= subject_data_dict.update({key: new_value})
+    all_data=subject_data_dict.values()
+    test_size = int(0.2 * all_data.shape[0])
+    test_data=all_data[0:test_size]
+    train_val_data=all_data[test_size:]
+    if normalization=='z3':
+        total=np.concatenate(train_val_data)
+        mean= np.mean(total)
+        std=np.std(total)
+        for el in train_val_data:
+            el=el-mean
+            el=el/std
+    train_label = np.random.randint(0, 4, len(train_val_data)-1)
+    validation_label = np.random.randint(0, 4, 1)
+    combinations=[]
+    for i in range (len(train_val_data)):
+        if shuffle==True:
+            train_val_data[i]=random.shuffle(train_val_data[i])
+        train_data = train_val_data[:i] + train_val_data[i+1:]
+        val_data=train_val_data[i]
+        combinations.append((test_data, train_data, val_data))
+    
+    return combinations, train_label, validation_label
 
-train_size = int(0.8 * dataset.shape[0])  # 80% for training
-val_size = dataset.shape[0] - train_size  # 20% for validation
-
-#split the dataset into training and validation, respectively 80% and 20%
-train_data=dataset[0:train_size,:,:,:] #(1, 1, 22, 1000)
-validation_data=dataset[train_size:,:,:,:] #(1, 1, 22, 1000)
-
-#create random labels since they are not useful for the training part 
-train_label = np.random.randint(0, 4, train_data.shape[0])
-validation_label = np.random.randint(0, 4, validation_data.shape[0])
+combinations1, train_label1, validation_label1= leave_one_session_out(session_data)
+combinations2, train_label2, validation_label2= leave_one_subject_out(session_data)
 
 train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
 validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
