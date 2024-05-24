@@ -8,7 +8,7 @@ Function to the creation the PyTorch dataset with EEG data in format channels x 
 #%% Imports
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, IterableDataset
 
 """
 %load_ext autoreload
@@ -19,14 +19,62 @@ import dataset as ds
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #%% PyTorch Dataset
+'''class EEG_Dataset_list(IterableDataset):
+    def __init__(self, data_list, labels, ch_list, normalize=-1):
+        """
+        data_list: list of data arrays, each having shape [Trials x 1 x channels x time samples]
+        labels: array of label arrays corresponding to the data
+        ch_list: list of channels
+        normalize: normalization method (1 for min-max normalization of the entire dataset, 2 for channel-wise normalization, -1 for nothing)
+        """
+        self.data_list = data_list
+        self.labels = labels #this is an array 
+        self.ch_list = ch_list
+        self.normalize = normalize
+        
+        if self.normalize not in [-1, 1, 2]:
+            raise ValueError("Normalize parameter must be -1, 1, or 2")
+        
+        # Transform data and labels into torch tensors
+        self.data_list = [torch.from_numpy(data).float() for data in self.data_list]
+        
+        # (OPTIONAL) Normalize
+        if self.normalize == 1:
+            self.minmax_normalize_all_dataset(-1, 1)
+        elif self.normalize == 2:
+            self.normalize_channel_by_channel(-1, 1)
+
+    def __iter__(self):
+        for data in self.data_list:
+            for i in range(data.shape[0]):
+                yield data[i], self.labels
+
+    def minmax_normalize_all_dataset(self, a, b):
+        """
+        Normalize the entire dataset between a and b.
+        """
+        for i in range(len(self.data_list)):
+            self.data_list[i] = ((self.data_list[i] - self.data_list[i].min()) / 
+                                 (self.data_list[i].max() - self.data_list[i].min())) * (b - a) + a
+
+    def normalize_channel_by_channel(self, a, b):
+        """
+        Normalize each channel so the value is between a and b.
+        """
+        for data in self.data_list:
+            for i in range(data.shape[0]):  # Cycle over trials
+                for j in range(data.shape[2]):  # Cycle over channels
+                    tmp_ch = data[i, 0, j]
+                    normalize_ch = ((tmp_ch - tmp_ch.min()) / (tmp_ch.max() - tmp_ch.min())) * (b - a) + a
+                    data[i, 0, j] = normalize_ch'''
 
 class EEG_Dataset(Dataset):
 
     def __init__(self, data, labels, ch_list, normalize = -1):
-        """
-        data = data used for the dataset. Must have shape [Trials x 1 x channels x time samples]
-        Note that if you use normale EEG data depth dimension (the second axis) has value 1.
-        """
+        
+        #data = data used for the dataset. Must have shape [Trials x 1 x channels x time samples]
+        #Note that if you use normale EEG data depth dimension (the second axis) has value 1.
+        
 
         if len(data.shape) != 4 or data.shape[1] != 1 :
             raise ValueError("The input shape of data must be [Trials x 1 x channels x time samples]. Current shape {}".format(data.shape))
