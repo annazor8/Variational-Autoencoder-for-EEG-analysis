@@ -31,7 +31,7 @@ train_dataset, validation_dataset, test_dataset = pp.get_dataset_d2a(dataset_con
 # E.g. percentage_split_train_validation = 0.9 means that 90% of the training data will be used for training and 10% for validation.
 
 # Take a single EEG trial
-#single_trial_eeg, single_trial_label = train_dataset[2]
+single_trial_eeg, single_trial_label = train_dataset[2] #questo è un trial, quindi dimensione 1x1x22x1000 di un torch.tensor creato dalla classe ds.time_EEG_Dataset()
 
 # Take multiple EEG trial
 multiple_trial_eeg, multiple_trial_labels = train_dataset[0:] #it's calling the get item method of the class EEG_Dataset that needs an index
@@ -45,7 +45,7 @@ multiple_trial_eeg, multiple_trial_labels = train_dataset[4:20]"""
 
 
 """##Training"""
-"""
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Imports
 
@@ -103,7 +103,7 @@ train_config['use_classifier'] = model_config['use_classifier']
 print((train_dataset[0][0]).size())
 # Train the model
 """
-#model = wt.train_wandb_V1('hvEEGNet_shallow', dataset_config, train_config, model_config)
+model = wt.train_wandb_V1('hvEEGNet_shallow', dataset_config, train_config, model_config)
 #model = hvEEGNet.hvEEGNet_shallow(model_config)
 
 #----------------------------------RECONSTRUCT 1 SAMPLE--------------------------------------

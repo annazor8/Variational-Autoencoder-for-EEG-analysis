@@ -19,7 +19,7 @@ import dataset as ds
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #%% PyTorch Dataset
-'''class EEG_Dataset_list(IterableDataset):
+class EEG_Dataset_list(Dataset):
     def __init__(self, data_list, labels, ch_list, normalize=-1):
         """
         data_list: list of data arrays, each having shape [Trials x 1 x channels x time samples]
@@ -28,7 +28,7 @@ import dataset as ds
         normalize: normalization method (1 for min-max normalization of the entire dataset, 2 for channel-wise normalization, -1 for nothing)
         """
         self.data_list = data_list
-        self.labels = labels #this is an array 
+        self.labels = torch.from_numpy(labels).long()
         self.ch_list = ch_list
         self.normalize = normalize
         
@@ -37,36 +37,19 @@ import dataset as ds
         
         # Transform data and labels into torch tensors
         self.data_list = [torch.from_numpy(data).float() for data in self.data_list]
-        
-        # (OPTIONAL) Normalize
-        if self.normalize == 1:
-            self.minmax_normalize_all_dataset(-1, 1)
-        elif self.normalize == 2:
-            self.normalize_channel_by_channel(-1, 1)
 
-    def __iter__(self):
-        for data in self.data_list:
-            for i in range(data.shape[0]):
-                yield data[i], self.labels
-
-    def minmax_normalize_all_dataset(self, a, b):
-        """
-        Normalize the entire dataset between a and b.
-        """
-        for i in range(len(self.data_list)):
-            self.data_list[i] = ((self.data_list[i] - self.data_list[i].min()) / 
-                                 (self.data_list[i].max() - self.data_list[i].min())) * (b - a) + a
-
-    def normalize_channel_by_channel(self, a, b):
-        """
-        Normalize each channel so the value is between a and b.
-        """
-        for data in self.data_list:
-            for i in range(data.shape[0]):  # Cycle over trials
-                for j in range(data.shape[2]):  # Cycle over channels
-                    tmp_ch = data[i, 0, j]
-                    normalize_ch = ((tmp_ch - tmp_ch.min()) / (tmp_ch.max() - tmp_ch.min())) * (b - a) + a
-                    data[i, 0, j] = normalize_ch'''
+    def __getitem__(self, idx: int):
+            """
+            Retrieve a sample and its label at the specified index.
+            """
+            sample = self.data_list[idx]
+            return sample, self.labels[idx]
+    def __len__(self):
+            """
+            Return the total number of samples in the dataset.
+            """
+            return len(self.labels)
+    
 
 class EEG_Dataset(Dataset):
 

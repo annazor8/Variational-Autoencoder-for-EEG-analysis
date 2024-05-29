@@ -94,8 +94,6 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], number
     test_size = int(np.ceil(0.2 * len(all_sessions)))
     test_data=all_sessions[0:test_size]
     train_val_data=all_sessions[test_size:]
-    train_label = np.random.randint(0, 4, len(train_val_data)-1) #because in the traingin dataset is the train_val_datset minus 1 session
-    validation_label = np.random.randint(0, 4, 1) #only one session in the val set
     #list of tuples containing the train data as the fist element and the validation data as the second element 
     combinations=[]
     for i in range (len(train_val_data)):
@@ -103,7 +101,7 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], number
         train_data = train_val_data[:i] + train_val_data[i+1:] #concatenate the two lists with the + operator
         val_data=train_val_data[i]
         combinations.append((train_data, val_data)) #combinations is a list of tuples (train_data: list, val_data: ndarray)
-    return combinations, test_data, train_label, validation_label
+    return combinations, test_data
 
 def leave_one_subject_out(session_data, number_of_trials:int=64, shuffle: bool=True):
     #initialize an empty dictionary: Dict[str, Dict[str, NDArray]
@@ -146,9 +144,6 @@ def leave_one_subject_out(session_data, number_of_trials:int=64, shuffle: bool=T
     for el in train_val_data_complete:
         i=random.randint(0, el.shape [0]-number_of_trials)
         train_val_data.append(el[i:i+number_of_trials,:,:,:])
-
-    train_label = np.random.randint(0, 4, len(train_val_data)-1)
-    validation_label = np.random.randint(0, 4, 1)
     combinations=[]
     for i in range (len(train_val_data)):
         train_data = train_val_data[:i] + train_val_data[i+1:]
@@ -158,11 +153,8 @@ def leave_one_subject_out(session_data, number_of_trials:int=64, shuffle: bool=T
     return combinations, test_data,  train_label, validation_label
 
 
-combinations1,test_data1, train_label1, validation_label1= leave_one_session_out(session_data, number_of_trials=1) #NB combinations[0][0] is a list, combinations[0][1] is an array
+combinations1,test_data1= leave_one_session_out(session_data, number_of_trials=1) #NB combinations[0][0] is a list, combinations[0][1] is an array
 #combinations2,test_data2, train_label2, validation_label2= leave_one_subject_out(session_data, number_of_trials=2)
-
-train_label=train_label1
-validation_label=validation_label1
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -170,6 +162,8 @@ validation_label=validation_label1
 # Dataloader, loss function, optimizer and lr_scheduler
 for indx, combo in enumerate(combinations1): #220 is the max number of combinations
     train_data=np.concatenate(combo[0])
+    train_label = np.random.randint(0, 4, train_data[0])
+    validation_label = np.random.randint(0, 4, 1)
     validation_data=combo[1]
     train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
     validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
@@ -263,3 +257,11 @@ frequency_counts = session_counts['unique_session_count'].value_counts().reset_i
 # Rename the columns for clarity
 frequency_counts.columns = ['unique_session_count', 'frequency']
 print(frequency_counts)"""
+combinations1,test_data1= leave_one_session_out(session_data, number_of_trials=1) #NB combinations[0][0] is a list, combinations[0][1] is an array
+train_dataset=ds_time.EEG_Dataset_list(combinations1[0][0])
+random_sampler = torch.utils.data.RandomSampler((len(train_dataset)))
+batch_sampler = torch.utils.data.BatchSampler(random_sampler, batch_size = train_config['batch_size'], drop_last=True)
+train_dataloader = torch.utils.data.DataLoader(train_dataset, shuffle = False, batch_sampler=batch_sampler)
+
+validation_dataloader= torch.utils.data.DataLoader(validation_dataset, batch_size = train_config['batch_size'], shuffle = True)
+loader_list             = [train_dataloader, validation_dataloader]
