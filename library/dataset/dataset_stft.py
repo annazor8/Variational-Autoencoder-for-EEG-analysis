@@ -127,7 +127,7 @@ class EEG_Dataset_stft(Dataset):
 #%% Check data
 
 def main():
-    import config_dataset as cd
+    from config import config_dataset as cd
     import preprocess as pp
     
     dataset_config = cd.get_moabb_dataset_config([3])

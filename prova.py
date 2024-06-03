@@ -72,7 +72,10 @@ path_to_save_model = 'model_weights_backup'
 epoch_to_save_model = 5
 project_name = "Example_project"                # Name of wandb project
 name_training_run = "first_test_wandb"          # Name of the training run
-model_artifact_name = "temporary_artifacts"     # Name of the artifact used to save the model
+model_artifact_name = "temporarybase_path = Path(__file__).resolve(strict=True).parent
+
+print(base_path)
+plt.savefig(base_path / "signal.png")_artifacts"     # Name of the artifact used to save the model
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Get model config
@@ -90,7 +93,10 @@ train_config['epochs'] = epochs
 train_config['path_to_save_model'] = path_to_save_model
 train_config['epoch_to_save_model'] = epoch_to_save_model
 
-# Update training config (wandb)
+# Update training config (wandb)base_path = Path(__file__).resolve(strict=True).parent
+
+print(base_path)
+plt.savefig(base_path / "signal.png")
 train_config['project_name'] = project_name
 train_config['name_training_run'] = name_training_run
 train_config['model_artifact_name'] = model_artifact_name
@@ -106,7 +112,10 @@ print((train_dataset[0][0]).size())
 model = wt.train_wandb_V1('hvEEGNet_shallow', dataset_config, train_config, model_config)
 #model = hvEEGNet.hvEEGNet_shallow(model_config)
 
-#----------------------------------RECONSTRUCT 1 SAMPLE--------------------------------------
+#-------------------------------base_path = Path(__file__).resolve(strict=True).parent
+
+print(base_path)
+plt.savefig(base_path / "signal.png")---RECONSTRUCT 1 SAMPLE--------------------------------------
 """
 # This line of code will automatically set the device as GPU whether the system has access to one
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -122,7 +131,11 @@ C = train_dataset[0][0].shape[1]
 T = train_dataset[0][0].shape[2]
 
 # Get model config
-model_config = cm.get_config_hierarchical_vEEGNet(C, T)
+model_config = cm.get_config_hie
+base_path = Path(__file__).resolve(strict=True).parent
+
+print(base_path)
+plt.savefig(base_path / "signal.png")
 
 # Create the model
 model = hvEEGNet.hvEEGNet_shallow(model_config)
@@ -140,7 +153,10 @@ model.load_state_dict(torch.load('./model_weights_backup/model_BEST.pth', map_lo
 # So the torch.load() function will throw an error if it find the model on CPU and the weights that want a model on GPU.
 # To avoid this, when you load the model remember to specify map_location as cpu.
 # In this way everything will be loaded in the CPU.
-# Reconstruction of a single EEG signal
+# Reconstruction of a single EEGbase_path = Path(__file__).resolve(strict=True).parent
+
+print(base_path)
+plt.savefig(base_path / "signal.png")
 
 # Get a random sample from the test dataset
 #idx_trial = int(torch.randint(0, len(test_dataset), (1, 1)))
@@ -172,7 +188,10 @@ ax.plot(t, x_eeg.squeeze()[idx_ch].squeeze(), label = 'Original EEG', color = 'g
 ax.plot(t, x_r_eeg.squeeze()[idx_ch].squeeze(), label = 'Reconstructed EEG', color = 'red', linewidth = 1)
 
 ax.legend()
-ax.set_xlim([2, 4]) # Note that the original signal is 4s long. Here I plot only 2 second to have a better visualization
+ax.set_xlim([2, 4]) # Note that base_path = Path(__file__).resolve(strict=True).parent
+
+print(base_path)
+plt.savefig(base_path / "signal.png")
 ax.set_xlabel('Time [s]')
 ax.set_ylabel(r"Amplitude [$\mu$V]")
 ax.set_title("Subj {} (test) - Trial {} - Ch. {}".format(subj, idx_trial, ch_to_plot))

@@ -123,7 +123,8 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     train_epoch_function, validation_epoch_function = get_train_and_validation_function(model)
-    
+    train_loss_list=[]
+    validation_loss_list=[]
     for epoch in range(train_config['epochs']):
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # (MANDATORY) Advance epoch, check validation loss and save the network
@@ -131,7 +132,8 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         # Advance epoch for train set (backward pass) and validation (no backward pass)
         train_loss      = train_epoch_function(model, loss_function, optimizer, train_loader, train_config, log_dict)
         validation_loss = validation_epoch_function(model, loss_function, validation_loader, train_config, log_dict)
-        
+        train_loss_list.append(train_loss)
+        validation_loss_list.append(validation_loss)
         # Save the new BEST model if a new minimum is reach for the validation loss
         if validation_loss < best_loss_val:
             best_loss_val = validation_loss
@@ -192,6 +194,7 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     # Save the model with the best loss on validation set
     if train_config['wandb_training']:
         wandb_support.add_file_to_artifact(model_artifact, '{}/{}'.format(train_config['path_to_save_model'], 'model_BEST.pth'))
+
 
 def test(model, test_loader, config):
     print("Metrics at the end of the training (END)")

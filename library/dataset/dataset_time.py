@@ -41,14 +41,16 @@ class EEG_Dataset_list(Dataset):
     def __getitem__(self, idx: int):
             """
             Retrieve a sample and its label at the specified index.
-            """
+            """ 
+            if idx >= len(self.data_list) or idx < 0:
+                raise IndexError(f"Index {idx} is out of bounds for dataset with length {len(self.data_list)}")
             sample = self.data_list[idx]
-            return sample, self.labels[idx]
+            return sample, self.labels
     def __len__(self):
             """
             Return the total number of samples in the dataset.
             """
-            return len(self.labels)
+            return len(self.data_list)
     
 
 class EEG_Dataset(Dataset):

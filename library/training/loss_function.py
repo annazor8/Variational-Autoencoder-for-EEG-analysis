@@ -80,6 +80,7 @@ def hierarchical_KL(mu_list, log_var_list, delta_mu_list, delta_log_var_list):
         if i == 0:
             tmp_kl = kl_loss_normal_function(mu_list[i], log_var_list[i])
         else:
+
             tmp_kl = kl_loss_normal_function(mu_list[i], log_var_list[i], delta_mu_list[i - 1], delta_log_var_list[i - 1])
             # Remember that there are 1 element less the of the shift term (i.e. delta_mu and delta_log_var) respect the mus and log_vars
             # This because the deepest layer has not a shift term

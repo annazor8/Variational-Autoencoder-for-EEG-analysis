@@ -122,6 +122,68 @@ def train_wandb_V2(model_name : str, train_config : dict, model_config : dict, t
         return model
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+def train_wandb_V2_TUAR(model_name : str, train_config : dict, model_config : dict, train_dataset, validation_dataset, number_of_trials : int):
+    """
+    Train a model with the data provided by the user and log everything on wandb.
+
+    @param model_name: string with the name of the model.
+    @param train_config: dictionary with all the hyperparameter for the training. Check the README_training for more info.
+    @param model_config: dictionary with all the parameter to use in the creation of the model. Check README_model for more info.
+    @param optimizer: PyTorch optimizer to use during the training (e.g. AdamW)
+    @param loader_list: list with two dataloader. The first dataloader is for the training data and the second for the test data.
+    @return: the trained model.
+    """
+
+    notes = train_config['notes'] if 'notes' in train_config else 'No notes in train_config'
+    name = train_config['name_training_run'] if 'name' in train_config else None
+
+    wandb_config = dict(
+        train = train_config,
+        model = model_config
+    )
+    
+    # Create dataloader
+    train_dataloader = torch.utils.data.DataLoader(dataset=train_dataset,batch_size = None, shuffle = True) #the batch is composed by a single sample, the sessions should be shuffled
+    validation_dataloader= torch.utils.data.DataLoader(dataset=validation_dataset, batch_size = number_of_trials, shuffle = False)#shuffle = False to be kept because the order of the trials in a session is important to be maintained
+    loader_list             = [train_dataloader, validation_dataloader]
+    
+    # Create model
+    model_config['input_size'] = train_dataset[0][0].unsqueeze(0).shape
+    model = train_generic.get_untrained_model(model_name, model_config)
+    model.to(train_config['device'])
+
+    # Declare loss function
+    loss_function = train_generic.get_loss_function(model_name, train_config)
+
+    # Get loss function
+    optimizer = torch.optim.AdamW(model.parameters(),
+                                  lr = train_config['lr'],
+                                  weight_decay = train_config['optimizer_weight_decay']
+                                  )
+
+    # Setup lr scheduler
+    if train_config['use_scheduler'] :
+        lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma = train_config['lr_decay_rate'])
+    else:
+        lr_scheduler = None
+
+    with wandb.init(project = train_config['project_name'], job_type = "train", config = wandb_config, notes = notes, name = name) as run:
+        # Setup artifact to save model
+        model_artifact_name = train_config['model_artifact_name'] + '_trained'
+        metadata = dict(training_config = dict(train_config))
+        model_artifact = wandb.Artifact(model_artifact_name, type = "model",
+                                        description = "Trained {} model".format(train_config['model_artifact_name']),
+                                        metadata = metadata)
+        
+        # Train the model
+        model = train_generic.train(model, loss_function, optimizer, loader_list, train_config, lr_scheduler, model_artifact)
+        
+        # Log the model artifact
+        run.log_artifact(model_artifact)
+
+        return model
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 def main_EEGNet_classifier():
     dataset_config = cd.get_moabb_dataset_config([3])

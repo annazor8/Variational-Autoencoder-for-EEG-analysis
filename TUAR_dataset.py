@@ -18,8 +18,24 @@ from collections import defaultdict
 from pathlib import Path
 import matplotlib.pyplot as plt
 from collections import Counter
+from library.analysis import dtw_analysis
+from library.training.soft_dtw_cuda import SoftDTW
+from library.dataset import preprocess as pp
+from library.model import hvEEGNet
+import matplotlib.pyplot as plt
+from pathlib import Path
 
 np.random.seed(43) 
+#Inside the module dtw analysis of the library there is a function that computed the dtw between two tensor.
+# Read the function documentation to more info about the computation and the input parameters.
+def reconstruction_metrics(x_eeg, x_r_eeg, device):
+    recon_error_avChannelsF_avTSF = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device, average_channels = False, average_time_samples = False)
+    recon_error_avChannelsF_avTST = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device, average_channels = False, average_time_samples = True)
+    recon_error_avChannelsT_avTSF = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device, average_channels = True, average_time_samples = False)
+    recon_error_avChannelsT_avTST = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device, average_channels = True, average_time_samples = True)
+    return recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF,recon_error_avChannelsT_avTST
+
+print("Shape of tensor x = {}".format(x_eeg.shape))
 # Directory containing the EDF files
 #directory_path='C:\Users\albin\OneDrive\Desktop\TCParRidotto'
 #directory_path = r'C:\Users\albin\OneDrive\Desktop\TCParRidotto'
@@ -36,7 +52,7 @@ edf_files = [file for file in all_files if file.endswith('.edf')]
 session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
 
 # Process each EDF file
-for file_name in sorted(edf_files):
+for file_name in sorted(edf_files[0:7]):
     file_path = os.path.join(directory_path, file_name)
     sub_id, session, time = file_name.split(".")[0].split("_") #split the filname into subject, session and time frame
     raw_mne = mne.io.read_raw_edf(file_path, preload=True)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
@@ -47,7 +63,6 @@ for file_name in sorted(edf_files):
     std=np.std(epoch_data)
     epoch_data= epoch_data/std #normalization for session
     epoch_data = np.expand_dims(epoch_data, 1) # number of epochs for that signal x 1 x channels x time samples 
-
     # If session_data[sub_id][session] exists, concatenate
     if session_data[sub_id][session].size > 0:
         new_session=session + '_01'
@@ -62,7 +77,7 @@ for file_name in sorted(edf_files):
 
 #leave one session out from the training for testing: we are loosing the subject information level
 
-def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], number_of_trials:int =64, shuffle: bool = True): #-> np.ndarray, np.ndarray, np.ndarray
+def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], number_of_trials:int =64): #-> np.ndarray, np.ndarray, np.ndarray
     #a list of the dictionaries [{session: arrays}, {session: arrays}, {session: arrays},...]
     #list of defautdict [{'session': array}]
     list_dict_session=session_data.values() #the type is dict_values
@@ -74,7 +89,7 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], number
         i=random.randint(0, el.shape [0]-number_of_trials)
         all_sessions.append(el[i:i+number_of_trials,:,:,:])
     #il numero di trials minimo è 64
-    """trials_value=[]
+    trials_value=[]
     for el in all_sessions:
         trials_value.append(el.shape[0])
 
@@ -88,9 +103,7 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], number
     plt.savefig(base_path / "signal.png")
     counter = Counter(trials_value)
     most_common = counter.most_common(1)[0] 
-    print(f"Il numero più frequente è {most_common[0]} con {most_common[1]} occorrenze.")"""
-    if shuffle==True:
-        random.shuffle(all_sessions) #shuffle because two adjacent sessions could belong to the same subject
+    print(f"Il numero più frequente è {most_common[0]} con {most_common[1]} occorrenze.")
     test_size = int(np.ceil(0.2 * len(all_sessions)))
     test_data=all_sessions[0:test_size]
     train_val_data=all_sessions[test_size:]
@@ -110,7 +123,8 @@ def leave_one_subject_out(session_data, number_of_trials:int=64, shuffle: bool=T
         # fixed key we are dealing with a subject 
         new_value=list(value.values()) #lista degli array, ciascuno rappresentante una sessione per il soggetto key
         subject_data_dict.update({subj: new_value})
-    
+   
+    # Get training config
     subjects=list(subject_data_dict.keys()) #list of subjects  
     test_size = int(np.ceil(0.2 * len(subjects))) #train size is the 20% of the total size 
     
@@ -144,16 +158,19 @@ def leave_one_subject_out(session_data, number_of_trials:int=64, shuffle: bool=T
     for el in train_val_data_complete:
         i=random.randint(0, el.shape [0]-number_of_trials)
         train_val_data.append(el[i:i+number_of_trials,:,:,:])
-    combinations=[]
+    combinations : list=[]
     for i in range (len(train_val_data)):
-        train_data = train_val_data[:i] + train_val_data[i+1:]
-        val_data=train_val_data[i]
+        train_data : list = train_val_data[:i] + train_val_data[i+1:]
+        val_data : np.ndarray=train_val_data[i]
         combinations.append((train_data, val_data))
-    
-    return combinations, test_data,  train_label, validation_label
+   
+    # Get training config
+    return combinations, test_data
+
+number_of_trials=64
+combinations1,test_data1= leave_one_session_out(session_data, number_of_trials=number_of_trials) #NB combinations[0][0] is a list, combinations[0][1] is an array
 
 
-combinations1,test_data1= leave_one_session_out(session_data, number_of_trials=1) #NB combinations[0][0] is a list, combinations[0][1] is an array
 #combinations2,test_data2, train_label2, validation_label2= leave_one_subject_out(session_data, number_of_trials=2)
 
 
@@ -161,16 +178,16 @@ combinations1,test_data1= leave_one_session_out(session_data, number_of_trials=1
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Dataloader, loss function, optimizer and lr_scheduler
 for indx, combo in enumerate(combinations1): #220 is the max number of combinations
-    train_data=np.concatenate(combo[0])
-    train_label = np.random.randint(0, 4, train_data[0])
-    validation_label = np.random.randint(0, 4, 1)
-    validation_data=combo[1]
-    train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
+    train_data : list=combo[0]
+    validation_data : np.ndarray=combo[1]
+    train_label : np.ndarray= np.random.randint(0, 4, train_data[0].shape[0])
+    validation_label : np.ndarray= np.random.randint(0, 4, validation_data.shape[0])
+    train_dataset = ds_time.EEG_Dataset_list(train_data, train_label, channels_to_set)
     validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
-    # Get training config
+    
     train_config = ct.get_config_hierarchical_vEEGNet_training()
 
-    epochs = 30
+    epochs = 1
     #path_to_save_model = 'model_weights_backup'
     path_to_save_model = 'model_weights_backup_{}'.format(indx) #the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch 
     os.makedirs(path_to_save_model, exist_ok=True)
@@ -180,13 +197,12 @@ for indx, combo in enumerate(combinations1): #220 is the max number of combinati
     train_config['epochs'] = epochs
     train_config['path_to_save_model'] = path_to_save_model
     train_config['epoch_to_save_model'] = epoch_to_save_model
-
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # Get model
 
     # Get number of channels and length of time samples
-    C = 22
-    T = 1000 
+    C  = train_data[0].shape[2]
+    T  = train_data[0].shape[3]
     # Get model config
     model_config = cm.get_config_hierarchical_vEEGNet(C, T)
 
@@ -206,7 +222,6 @@ for indx, combo in enumerate(combinations1): #220 is the max number of combinati
                                 lr = train_config['lr'],
                                 weight_decay = train_config['optimizer_weight_decay']
                                 )
-
     # (OPTIONAL) Setup lr scheduler
     if train_config['use_scheduler'] :
         lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma = train_config['lr_decay_rate'])
@@ -217,51 +232,81 @@ for indx, combo in enumerate(combinations1): #220 is the max number of combinati
     model.to(train_config['device'])
 
     # Create dataloader
-    train_dataloader        = torch.utils.data.DataLoader(train_dataset, batch_size = train_config['batch_size'])
-    validation_dataloader   = torch.utils.data.DataLoader(validation_dataset, batch_size = train_config['batch_size'])
+    train_dataloader = torch.utils.data.DataLoader(dataset=train_dataset,batch_size = None, shuffle = True) #the batch is composed by a single sample, the sessions should be shuffled
+    validation_dataloader= torch.utils.data.DataLoader(dataset=validation_dataset, batch_size = number_of_trials, shuffle = False)#shuffle = False to be kept because the order of the trials in a session is important to be maintained
     loader_list             = [train_dataloader, validation_dataloader]
-
  
 
     model = train_generic.train(model, loss_function, optimizer, loader_list, train_config, lr_scheduler, model_artifact = None)
+    reconstructed_data : list=[]
+    recon_error_avChannelsF_avTSF_list : list = []
+    recon_error_avChannelsF_avTST_list : list = []
+    recon_error_avChannelsT_avTSF_list : list = []
+    recon_error_avChannelsT_avTST_list : list = []
+
+    for x_eeg_ in test_data1:
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        x_eeg = x_eeg_.astype(np.float32)
+        x_eeg = torch.from_numpy(x_eeg)
+        x_eeg = x_eeg.to(device)
+        model.to(device)
+        x_r_eeg= model.reconstruct(x_eeg)
+        reconstructed_data.append(x_r_eeg)
+        recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF,recon_error_avChannelsT_avTST=reconstruction_metrics(x_eeg, x_r_eeg)
+        recon_error_avChannelsF_avTSF_list.append(recon_error_avChannelsF_avTSF)
+        recon_error_avChannelsF_avTST_list.append(recon_error_avChannelsF_avTST)
+        recon_error_avChannelsT_avTSF_list.append(recon_error_avChannelsT_avTSF)
+        recon_error_avChannelsT_avTST_list.append(recon_error_avChannelsT_avTST)
     print('end tuple')
 #-------------------------------------------------
-"""#RECONSTRUCTION
+    # Get model config
+"""model_config = cm.get_config_hierarchical_vEEGNet(C, T)
+model = hvEEGNet.hvEEGNet_shallow(model_config)
+#RECONSTRUCTION
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 ch_to_plot='EEG FP2-REF'
-x_eeg=data[subject_test]
-x_r_eeg = model.reconstruct(x_eeg)
+x_eeg_=test_data1[0] #test data should have Bx1XCXTS
+x_eeg = x_eeg_.astype(np.float32)
+x_eeg = torch.from_numpy(x_eeg)
+x_eeg = x_eeg.to(device)
+model.to(device)
+model.load_state_dict(torch.load('/home/azorzetto/data1/Variational-Autoencoder-for-EEG-analysis/model_weights_backup_0/model_10.pth', map_location = torch.device('cpu')))
+x_r_eeg= model.reconstruct(x_eeg)"""
+
+def plot_ORIGINAL_vs_RECONSTRUCTED(ch_to_plot : str, channels_to_set : list, x_eeg : np.ndarray, x_r_eeg : np.ndarray, trial : int = 3):
+    t = torch.linspace(2, 6, T)
+    idx = channels_to_set.index(ch_to_plot)
+    # Plot the original and reconstructed signal
+    plt.rcParams.update({'font.size': 20})
+    fig, ax = plt.subplots(1, 1, figsize = (12, 8))
+
+    ax.plot(t, x_eeg.squeeze()[trial] [idx], label = 'Original EEG', color = 'red', linewidth = 2)
+    ax.plot(t, x_r_eeg.squeeze()[trial] [idx], label = 'Reconstructed EEG', color = 'green', linewidth = 1)
+
+    ax.legend()
+    ax.set_xlim([2, 4]) # Note that the original signal is 4s long. Here I plot only 2 second to have a better visualization
+    ax.set_xlabel('Time [s]')
+    ax.set_ylabel(r"Amplitude [$\mu$V]")
+    ax.set_title("Ch. {}".format(ch_to_plot))
+    ax.grid(True)
+
+    fig.tight_layout()
+    base_path = Path(__file__).resolve(strict=True).parent
+
+    print(base_path)
+    plt.savefig(base_path / "signal.png")
+    fig.show()
 
 
-daf=[]
-for file in edf_files:
-    daf.append({'name': file.split('_')[0], 'trial': file.split('_')[1], 'session': file.split('_')[2]})
-df = pd.DataFrame(daf)
-print(df)
-    Exception has occurred: AttributeError
-'tuple' object has no attribute 'append'
-  File "/home/azorzetto/data1/Variational-Autoencoder-for-EEG-analysis/TUAR_dataset.py", line 75, in leave_one_session_out
-    all_sessions.append(el[i:i+number_of_trials,:,:,:])
-  File "/home/azorzetto/data1/Variational-Autoencoder-for-EEG-analysis/TUAR_dataset.py", line 162, in <module>
-    combinations1,test_data1, train_label1, validation_label1= leave_one_session_out(session_data, number_of_trials=1) #NB combinations[0][0] is a list, combinations[0][1] is an array
-AttributeError: 'tuple' object has no attribute 'append'
-trials_counts = df.groupby('name')['trial'].nunique().reset_index()
-trials_counts.columns = ['name', 'unique_trial_count']
-frequency_counts = trials_counts['unique_trial_count'].value_counts().reset_index()
-# Rename the columns for clarity
-frequency_counts.columns = ['unique_trial_count', 'frequency']
-print(frequency_counts)
 
-session_counts = df.groupby(['name', 'trial'])['session'].nunique().reset_index()
-session_counts.columns = ['name', 'trial', 'unique_session_count']
-frequency_counts = session_counts['unique_session_count'].value_counts().reset_index()
-# Rename the columns for clarity
-frequency_counts.columns = ['unique_session_count', 'frequency']
-print(frequency_counts)"""
-combinations1,test_data1= leave_one_session_out(session_data, number_of_trials=1) #NB combinations[0][0] is a list, combinations[0][1] is an array
-train_dataset=ds_time.EEG_Dataset_list(combinations1[0][0])
-random_sampler = torch.utils.data.RandomSampler((len(train_dataset)))
-batch_sampler = torch.utils.data.BatchSampler(random_sampler, batch_size = train_config['batch_size'], drop_last=True)
-train_dataloader = torch.utils.data.DataLoader(train_dataset, shuffle = False, batch_sampler=batch_sampler)
+recon_error = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device, average_channels = False, average_time_samples = False)
+print("Reconstruction error with average_channels = False and average_time_samples = False. Shape of the output tensor = {}\n{}\n".format(recon_error.shape, recon_error))
 
-validation_dataloader= torch.utils.data.DataLoader(validation_dataset, batch_size = train_config['batch_size'], shuffle = True)
-loader_list             = [train_dataloader, validation_dataloader]
+recon_error = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device, average_channels = False, average_time_samples = True)
+print("Reconstruction error with average_channels = False and average_time_samples = True. Shape of the output tensor = {}\n{}\n".format(recon_error.shape, recon_error))
+
+recon_error = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device, average_channels = True, average_time_samples = False)
+print("Reconstruction error with average_channels = True  and average_time_samples = False. Shape of the output tensor = {}\n{}\n".format(recon_error.shape, recon_error))
+
+recon_error = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device, average_channels = True, average_time_samples = True)
+print("Reconstruction error with average_channels = True  and average_time_samples = True. Shape of the output tensor = {}\n{}\n".format(recon_error.shape, recon_error))
