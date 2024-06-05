@@ -1,5 +1,16 @@
-import mne
-from mne.io import Raw
+
+from collections import defaultdict
+from pathlib import Path
+import matplotlib.pyplot as plt
+from collections import Counter
+from library.analysis import dtw_analysis
+from library.training.soft_dtw_cuda import SoftDTW
+from library.dataset import preprocess as pp
+from library.model import hvEEGNet
+import matplotlib.pyplot as plt
+from pathlib import Path
+from mne.io import mne
+import Raw
 import torch
 from numpy.typing import NDArray
 from typing import Dict, List, Tuple
@@ -13,17 +24,7 @@ import mne
 import numpy as np
 import random
 import pandas as pd
-from welford import Welford 
-from collections import defaultdict
-from pathlib import Path
-import matplotlib.pyplot as plt
-from collections import Counter
-from library.analysis import dtw_analysis
-from library.training.soft_dtw_cuda import SoftDTW
-from library.dataset import preprocess as pp
-from library.model import hvEEGNet
-import matplotlib.pyplot as plt
-from pathlib import Path
+from welford import Welford
 
 np.random.seed(43) 
 #Inside the module dtw analysis of the library there is a function that computed the dtw between two tensor.
@@ -177,6 +178,9 @@ combinations1,test_data1= leave_one_session_out(session_data, number_of_trials=n
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Dataloader, loss function, optimizer and lr_scheduler
+df_train_loss = pd.DataFrame([])
+df_val_loss = pd.DataFrame([])
+df_reconstruction=pd.DataFrame([], columns=['', '', '', ''])
 for indx, combo in enumerate(combinations1): #220 is the max number of combinations
     train_data : list=combo[0]
     validation_data : np.ndarray=combo[1]
@@ -209,7 +213,7 @@ for indx, combo in enumerate(combinations1): #220 is the max number of combinati
     # If the model has also a classifier add the information to training config
     train_config['measure_metrics_during_training'] = model_config['use_classifier']
     train_config['use_classifier'] = model_config['use_classifier']
-
+    train_config['path_to_checkpoint']= 'checkpoint_iteration_{}'.format(indx)
     # hvEEGNet creation
     model = hvEEGNet.hvEEGNet_shallow(model_config)
     # Declare loss function
@@ -237,7 +241,9 @@ for indx, combo in enumerate(combinations1): #220 is the max number of combinati
     loader_list             = [train_dataloader, validation_dataloader]
  
 
-    model = train_generic.train(model, loss_function, optimizer, loader_list, train_config, lr_scheduler, model_artifact = None)
+    train_loss_list, validation_loss_list, epoch_list = train_generic.train(model, loss_function, optimizer, loader_list, train_config, lr_scheduler, model_artifact = None)
+    df_train_loss.insert(loc=df_train_loss.shape[1], column='training loss', value= train_loss_list,allow_duplicates= True)
+    df_val_loss.insert(loc=df_val_loss.shape[1], column='validation loss', value= validation_loss_list,allow_duplicates= True)
     reconstructed_data : list=[]
     recon_error_avChannelsF_avTSF_list : list = []
     recon_error_avChannelsF_avTST_list : list = []
@@ -245,7 +251,7 @@ for indx, combo in enumerate(combinations1): #220 is the max number of combinati
     recon_error_avChannelsT_avTST_list : list = []
 
     for x_eeg_ in test_data1:
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = train_config['device']
         x_eeg = x_eeg_.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg)
         x_eeg = x_eeg.to(device)
@@ -253,11 +259,15 @@ for indx, combo in enumerate(combinations1): #220 is the max number of combinati
         x_r_eeg= model.reconstruct(x_eeg)
         reconstructed_data.append(x_r_eeg)
         recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF,recon_error_avChannelsT_avTST=reconstruction_metrics(x_eeg, x_r_eeg)
+        
         recon_error_avChannelsF_avTSF_list.append(recon_error_avChannelsF_avTSF)
         recon_error_avChannelsF_avTST_list.append(recon_error_avChannelsF_avTST)
         recon_error_avChannelsT_avTSF_list.append(recon_error_avChannelsT_avTSF)
         recon_error_avChannelsT_avTST_list.append(recon_error_avChannelsT_avTST)
     print('end tuple')
+
+average_train_loss=df_train_loss.mean(axis=1)
+average_val_loss=df_val_loss.mean(axis=1)
 #-------------------------------------------------
     # Get model config
 """model_config = cm.get_config_hierarchical_vEEGNet(C, T)
@@ -272,7 +282,8 @@ x_eeg = x_eeg.to(device)
 model.to(device)
 model.load_state_dict(torch.load('/home/azorzetto/data1/Variational-Autoencoder-for-EEG-analysis/model_weights_backup_0/model_10.pth', map_location = torch.device('cpu')))
 x_r_eeg= model.reconstruct(x_eeg)"""
-
+def plot_validation_loss(path, ):
+    
 def plot_ORIGINAL_vs_RECONSTRUCTED(ch_to_plot : str, channels_to_set : list, x_eeg : np.ndarray, x_r_eeg : np.ndarray, trial : int = 3):
     t = torch.linspace(2, 6, T)
     idx = channels_to_set.index(ch_to_plot)

@@ -123,6 +123,7 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     train_epoch_function, validation_epoch_function = get_train_and_validation_function(model)
+    epoch_list=[]
     train_loss_list=[]
     validation_loss_list=[]
     for epoch in range(train_config['epochs']):
@@ -134,6 +135,7 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         validation_loss = validation_epoch_function(model, loss_function, validation_loader, train_config, log_dict)
         train_loss_list.append(train_loss)
         validation_loss_list.append(validation_loss)
+        epoch_list.append(epoch + 1)
         # Save the new BEST model if a new minimum is reach for the validation loss
         if validation_loss < best_loss_val:
             best_loss_val = validation_loss
@@ -143,7 +145,13 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         # N.b. When the variable epoch is n the model is trained for n + 1 epochs when arrive at this instructions.
         if (epoch + 1) % train_config['epoch_to_save_model'] == 0:
             torch.save(model.state_dict(), '{}/{}'.format(train_config['path_to_save_model'], "model_{}.pth".format(epoch + 1)))
-
+            torch.save({
+            'epoch': epoch +1,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'train_loss': train_loss,
+            'val_loss' : validation_loss
+            }, '{}/{}'.format(train_config['path_to_checkpoint'], "epoch_{}.pth".format(epoch + 1)))
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # (OPTIONAL) Optional steps during the training
 
@@ -194,7 +202,7 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     # Save the model with the best loss on validation set
     if train_config['wandb_training']:
         wandb_support.add_file_to_artifact(model_artifact, '{}/{}'.format(train_config['path_to_save_model'], 'model_BEST.pth'))
-
+    return train_loss_list, validation_loss_list, epoch_list
 
 def test(model, test_loader, config):
     print("Metrics at the end of the training (END)")
