@@ -145,13 +145,6 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         # N.b. When the variable epoch is n the model is trained for n + 1 epochs when arrive at this instructions.
         if (epoch + 1) % train_config['epoch_to_save_model'] == 0:
             torch.save(model.state_dict(), '{}/{}'.format(train_config['path_to_save_model'], "model_{}.pth".format(epoch + 1)))
-            torch.save({
-            'epoch': epoch +1,
-            'model_state_dict': model.state_dict(),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'train_loss': train_loss,
-            'val_loss' : validation_loss
-            }, '{}/{}'.format(train_config['path_to_checkpoint'], "epoch_{}.pth".format(epoch + 1)))
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # (OPTIONAL) Optional steps during the training
 
