@@ -195,7 +195,6 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     # Save the model with the best loss on validation set
     if train_config['wandb_training']:
         wandb_support.add_file_to_artifact(model_artifact, '{}/{}'.format(train_config['path_to_save_model'], 'model_BEST.pth'))
-    return train_loss_list, validation_loss_list, epoch_list
 
 def test(model, test_loader, config):
     print("Metrics at the end of the training (END)")

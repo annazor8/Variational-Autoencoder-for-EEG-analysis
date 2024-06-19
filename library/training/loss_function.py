@@ -76,6 +76,7 @@ def hierarchical_KL(mu_list, log_var_list, delta_mu_list, delta_log_var_list):
     # Kullback
     kl_loss = 0
     kl_loss_list = []
+    i=0
     for i in range(len(mu_list)):
         if i == 0:
             tmp_kl = kl_loss_normal_function(mu_list[i], log_var_list[i])
