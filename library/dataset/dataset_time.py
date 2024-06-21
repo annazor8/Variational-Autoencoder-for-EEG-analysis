@@ -54,6 +54,8 @@ class EEG_Dataset_list(Dataset):
     
 
 class EEG_Dataset(Dataset):
+    """
+    """
 
     def __init__(self, data, labels, ch_list, normalize = -1):
         
