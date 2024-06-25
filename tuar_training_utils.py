@@ -21,7 +21,7 @@ def reconstruction_metrics(x_eeg, x_r_eeg, device):
     return recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF, recon_error_avChannelsT_avTST
 
 
-def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]]):  # -> np.ndarray, np.ndarray, np.ndarray
+def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], global_min, global_max, new_min=-100, new_max=100):  # -> np.ndarray, np.ndarray, np.ndarray
     """
     Returns splits of sessions leaving one different session out in each fold
     Return:
@@ -36,6 +36,7 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]]):  # ->
         all_sessions_complete.extend(list(el.values()))
     all_sessions = []
     for el in all_sessions_complete:
+        el=((el - global_min) / ( global_max- global_min)) * (new_max - new_min) + new_min
         all_sessions.append(el)
 
     test_size = int(np.ceil(0.2 * len(all_sessions)))
@@ -52,7 +53,7 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]]):  # ->
     return combinations, test_data
 
 
-def leave_one_subject_out(session_data, number_of_trials: int = 64, shuffle: bool = True):
+def leave_one_subject_out(session_data, global_min, global_max, number_of_trials: int = 64, shuffle: bool = True):
     # initialize an empty dictionary: Dict[str, Dict[str, NDArray]
     subject_data_dict: Dict[str, list] = defaultdict(lambda: list)
     for subj, value in session_data.items():  # key is the subj, value is a dictionary

@@ -10,8 +10,8 @@ from library.config import config_model as cm
 import os
 import mne
 import numpy as np
-import pandas as pd
-from tuar_training_utils import leave_one_session_out, reconstruction_metrics, rescale_data
+import pandas as pd 
+from tuar_training_utils import leave_one_session_out, reconstruction_metrics
 from torch.utils.data import DataLoader
 
 #Inside the module dtw analysis of the library there is a function that computed the dtw between two tensor.
@@ -202,15 +202,16 @@ def main():
     global_array=np.concatenate(all_session)
     global_min=np.min(global_array)
     global_max=np.max(global_array)
-    session_data=rescale_data(session_data, global_min, global_max)
+    
     combinations1, test_data1 = leave_one_session_out(
-        session_data)  # NB combinations[0][0] is a list, combinations[0][1] is an array
+        session_data, global_min, global_max)  # NB combinations[0][0] is a list, combinations[0][1] is an array
 
     # combinations2,test_data2, train_label2, validation_label2= leave_one_subject_out(session_data, number_of_trials=2)
 
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # Dataloader, loss function, optimizer and lr_scheduler
+
 
     df_train_loss = pd.DataFrame([])
     df_val_loss = pd.DataFrame([])
