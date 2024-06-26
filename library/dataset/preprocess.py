@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import mne
 from scipy import signal
 
-import moabb.datasets as mb
-import moabb.paradigms as mp
+
+
 
 from ..config import config_dataset as cd
 from ..config import config_plot as cp

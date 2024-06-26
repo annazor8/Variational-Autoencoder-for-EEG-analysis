@@ -158,7 +158,9 @@ def main():
     #     'Reconstruction error with no average_channels and average_time_samples',
     #     'Reconstruction error with average_channels  and no average_time_samples',
     #     'Reconstruction error with average_channels  and average_time_samples'])
-    directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
+    #directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
+    directory_path='/home/azorzetto/dataset/01_tcp_ar'
+
     #directory_path = '/home/lmonni/Documents/01_tcp_ar'
     channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
