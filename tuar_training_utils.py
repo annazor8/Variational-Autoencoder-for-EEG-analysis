@@ -34,10 +34,10 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], global
     all_sessions_complete = []  # initialize a list containing all sessions
     for el in list_dict_session:
         all_sessions_complete.extend(list(el.values()))
-    all_sessions = []
-    for el in all_sessions_complete:
-        el=((el - global_min) / ( global_max- global_min)) * (new_max - new_min) + new_min
-        all_sessions.append(el)
+    all_sessions = all_sessions_complete
+    #for el in all_sessions_complete:
+    #    el=((el - global_min) / ( global_max- global_min)) * (new_max - new_min) + new_min
+    #    all_sessions.append(el)
 
     test_size = int(np.ceil(0.2 * len(all_sessions)))
     test_data = all_sessions[0:test_size]
