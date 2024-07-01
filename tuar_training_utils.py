@@ -3,6 +3,8 @@ from library.analysis import dtw_analysis
 from typing import Dict, List, Tuple
 import numpy as np
 import random
+import os
+import mne
 
 
 def reconstruction_metrics(x_eeg, x_r_eeg, device):
@@ -20,6 +22,46 @@ def reconstruction_metrics(x_eeg, x_r_eeg, device):
                                                                                         average_time_samples=True)
     return recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF, recon_error_avChannelsT_avTST
 
+def get_data_TUAR(directory_path:str)
+    channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
+                       'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
+                       'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
+                       'EEG T1-REF', 'EEG T2-REF']
+    # List all files in the directory
+    all_files = os.listdir(directory_path)
+    # Filter out only EDF files
+    edf_files = [file for file in all_files if file.endswith('.edf')][0:20]
+
+    # data structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
+    session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
+    all_session=[]
+    # Process each EDF file
+    for file_name in sorted(edf_files):
+        file_path = os.path.join(directory_path, file_name)
+        sub_id, session, time = file_name.split(".")[0].split(
+            "_")  # split the filname into subject, session and time frame
+        raw_mne = mne.io.read_raw_edf(file_path,
+                                      preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
+        raw_mne.pick_channels(channels_to_set,
+                              ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
+        raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
+        epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False,
+                                                  overlap=3)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
+        del raw_mne
+        epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
+        del epochs_mne
+        mean=np.mean(epoch_data)
+        std = np.std(epoch_data)
+        epoch_data = (epoch_data-mean) / std  # normalization for session
+        epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
+        # If session_data[sub_id][session] exists, concatenate
+        all_session.append(epoch_data)
+        if session_data[sub_id][session].size > 0:
+            new_session = session + '_01'
+            session_data[sub_id][new_session] = epoch_data
+        else:
+            session_data[sub_id][session] = epoch_data
+    return session_data
 
 def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], global_min, global_max, new_min=-100, new_max=100):  # -> np.ndarray, np.ndarray, np.ndarray
     """
