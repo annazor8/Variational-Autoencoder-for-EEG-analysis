@@ -169,13 +169,13 @@ def main():
     # List all files in the directory
     all_files = os.listdir(directory_path)
     # Filter out only EDF files
-    edf_files = [file for file in all_files if file.endswith('.edf')]
+    edf_files = [file for file in all_files if file.endswith('.edf')][0:20]
 
     # data structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
     session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
     all_session=[]
     # Process each EDF file
-    for file_name in sorted(edf_files[0:20]):
+    for file_name in sorted(edf_files):
         file_path = os.path.join(directory_path, file_name)
         sub_id, session, time = file_name.split(".")[0].split(
             "_")  # split the filname into subject, session and time frame
@@ -234,7 +234,7 @@ def main():
         validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
 
         train_config = ct.get_config_hierarchical_vEEGNet_training()
-
+        gamma_dtw=0.1
         epochs = 80
         # path_to_save_model = 'model_weights_backup'
         path_to_save_model = 'model_weights_backup_{}'.format(
@@ -244,6 +244,7 @@ def main():
 
         # Update train config
         train_config['epochs'] = epochs
+        train_config['gamma_dtw'] = gamma_dtw
         train_config['path_to_save_model'] = path_to_save_model
         train_config['epoch_to_save_model'] = epoch_to_save_model
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
