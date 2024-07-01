@@ -30,6 +30,7 @@ dataset_config = cd.get_moabb_dataset_config(subj_list)
 
 # This function automatically download the data through moabb, preprocess the data and create the dataset
 # Note that the dataset is an istance of the class EEG_Dataset (you can find the code for the class inside the dataset_time subpackage)
+#it's in the form trials x 1 x channels x time samples 
 train_dataset, validation_dataset, test_dataset = pp.get_dataset_d2a(dataset_config)
 
 # If you specify multuple subjects in the subj_list the data of the various subjects are mixed together

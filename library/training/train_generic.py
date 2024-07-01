@@ -126,7 +126,9 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     train_epoch_function, validation_epoch_function = get_train_and_validation_function(model)
-    
+    epoch_list=[]
+    train_loss_list=[]
+    validation_loss_list=[]
     for epoch in range(train_config['epochs']):
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # (MANDATORY) Advance epoch, check validation loss and save the network
@@ -134,7 +136,9 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         # Advance epoch for train set (backward pass) and validation (no backward pass)
         train_loss      = train_epoch_function(model, loss_function, optimizer, train_loader, train_config, log_dict)
         validation_loss = validation_epoch_function(model, loss_function, validation_loader, train_config, log_dict)
-        
+        train_loss_list.append(train_loss)
+        validation_loss_list.append(validation_loss)
+        epoch_list.append(epoch + 1)
         # Save the new BEST model if a new minimum is reach for the validation loss
         if validation_loss < best_loss_val:
             best_loss_val = validation_loss
@@ -144,7 +148,6 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         # N.b. When the variable epoch is n the model is trained for n + 1 epochs when arrive at this instructions.
         if (epoch + 1) % train_config['epoch_to_save_model'] == 0:
             torch.save(model.state_dict(), '{}/{}'.format(train_config['path_to_save_model'], "model_{}.pth".format(epoch + 1)))
-
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # (OPTIONAL) Optional steps during the training
 

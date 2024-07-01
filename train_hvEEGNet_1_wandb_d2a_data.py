@@ -10,7 +10,6 @@ The dataset is automatically downloaded through the functions inside the library
 # Imports
 
 from library.training import wandb_training as wt
-
 from library.config import config_training as ct
 from library.config import config_model as cm
 from library.config import config_dataset as cd

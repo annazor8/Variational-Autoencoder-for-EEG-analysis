@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import mne
 from scipy import signal
 
-import moabb.datasets as mb
-import moabb.paradigms as mp
+
+
 
 from ..config import config_dataset as cd
 from ..config import config_plot as cp
@@ -118,7 +118,7 @@ def compute_ERS_single_channels(stft_channel, idx_rest):
 
 def get_dataset_d2a(config : dict):
     # Get the original train and test data
-    data_train, labels_train, ch_list = download.get_D2a_data(config, 'train')
+    data_train, labels_train, ch_list = download.get_D2a_data(config, 'train') 
     data_test, labels_test, ch_list = download.get_D2a_data(config, 'test')
     config['channels_list'] = ch_list
 
@@ -165,7 +165,7 @@ def get_dataset_d2a(config : dict):
         if config['percentage_split_train_validation'] > 0 and config['percentage_split_train_validation'] < 1:
             validation_dataset = ds_stft.EEG_Dataset_stft(data_validation, labels_validation, config)
         else:
-            validation_dataset = None
+            validation_dataset = None 
     else:
         train_dataset       = ds_time.EEG_Dataset(data_train, labels_train, ch_list, config['normalize'])
         test_dataset        = ds_time.EEG_Dataset(data_test, labels_test, ch_list, config['normalize'])

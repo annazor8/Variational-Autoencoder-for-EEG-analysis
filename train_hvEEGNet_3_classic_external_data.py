@@ -29,15 +29,15 @@ epoch_to_save_model = 1
 # Get data and train config
 
 # Create synthetic data
-train_data = np.random.rand(100, 1 , 3, 1000)
-validation_data = np.random.rand(100, 1 , 3, 1000)
-
+train_data = np.random.rand(100, 1 , 3, 1000) #Shape:(100, 1, 3, 1000) interi tra 0 e 1 1000 samples a 250 Hz corrispondono a 4 secondi 
+validation_data = np.random.rand(100, 1 , 3, 1000) #Shape:(100, 1, 3, 1000) interi tra 0 e 1 
+ 
 # Create channel lists
-ch_list = ['C3', 'C5', 'C6']
+ch_list = ['C3', 'C5', 'C6'] 
 
 # Create synthetic label
-train_label = np.random.randint(0, 4, train_data.shape[0])
-validation_label = np.random.randint(0, 4, validation_data.shape[0])
+train_label = np.random.randint(0, 4, train_data.shape[0]) #Shape:(100,) interi tra 0 e 4
+validation_label = np.random.randint(0, 4, validation_data.shape[0]) #Shape:(100,) interi tra 0 e 4
 
 # Create train and validation dataset
 train_dataset = ds_time.EEG_Dataset(train_data, train_label, ch_list)
