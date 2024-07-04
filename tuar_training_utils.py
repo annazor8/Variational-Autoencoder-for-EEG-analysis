@@ -22,7 +22,7 @@ def reconstruction_metrics(x_eeg, x_r_eeg, device):
                                                                                         average_time_samples=True)
     return recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF, recon_error_avChannelsT_avTST
 
-def get_data_TUAR(directory_path:str)
+def get_data_TUAR(directory_path:str):
     channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                        'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
@@ -63,7 +63,7 @@ def get_data_TUAR(directory_path:str)
             session_data[sub_id][session] = epoch_data
     return session_data
 
-def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], global_min, global_max, new_min=-100, new_max=100):  # -> np.ndarray, np.ndarray, np.ndarray
+def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], new_min=-100, new_max=100):  # -> np.ndarray, np.ndarray, np.ndarray
     """
     Returns splits of sessions leaving one different session out in each fold
     Return:

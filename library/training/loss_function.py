@@ -39,9 +39,9 @@ def compute_dtw_loss_along_channels(x, x_r, dtw_loss_function, average_channels 
         # Note that the depth dimension has size 1 for EEG signal. So after selecting the channel x_ch will have size [B x D x T], with D = depth = 1
         # The sdtw want the length of the sequence in the dimension with the index 1 so I swap the depth dimension and the the T dimension
         
-        #tmp_recon_loss = dtw_loss_function(x_ch, x_r_ch)
+        tmp_recon_loss = dtw_loss_function(x_ch, x_r_ch)
         #INSERTED BY ANNA FOR NORMALIZATION OF DTW
-        tmp_recon_loss=dtw_loss_function(x_ch, x_r_ch)-0.5*(dtw_loss_function(x_ch, x_ch)+dtw_loss_function(x_r_ch, x_r_ch))
+        #tmp_recon_loss=dtw_loss_function(x_ch, x_r_ch)-0.5*(dtw_loss_function(x_ch, x_ch)+dtw_loss_function(x_r_ch, x_r_ch))
         recon_loss += tmp_recon_loss.mean()
 
     if average_channels: recon_loss /= x.shape[2]
