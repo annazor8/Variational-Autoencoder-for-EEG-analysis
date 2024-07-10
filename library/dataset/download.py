@@ -4,13 +4,14 @@
 
 Function related to download the data
 """
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#%% Imports
+#%% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Imports
 
 import numpy as np
 import mne
-import moabb.datasets as mb
 
+import moabb.datasets as mb
+import moabb.paradigms as mp
 from ..config import config_dataset as cd
 from .. import check_config
 
@@ -20,7 +21,8 @@ from .. import check_config
 
 import download
 """
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+
+#%% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Download and automatic segmentation (moabb)
 
 def get_moabb_data_automatic(dataset, paradigm, config, type_dataset):
@@ -44,9 +46,6 @@ def get_moabb_data_automatic(dataset, paradigm, config, type_dataset):
     
     paradigm.n_classes = config['n_classes']
 
-    # paradigm.tmin = -1
-    # paradigm.tmax = 7.5
-
     # Get the raw data
     raw_data, raw_labels, info = paradigm.get_data(dataset = dataset, subjects = config['subjects_list'])
     print(info)
@@ -62,7 +61,7 @@ def get_moabb_data_automatic(dataset, paradigm, config, type_dataset):
 
     return raw_data, raw_labels
 
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
+#%% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Download and  segmentation through mne 
 
 def get_moabb_data_handmade(dataset, config, type_dataset):
@@ -83,9 +82,16 @@ def get_moabb_data_handmade(dataset, config, type_dataset):
         raw_data = raw_dataset[subject]
         
         # For each subject the data are divided in train and test. Here I extract train or test data 
-        if type_dataset == 'train': raw_data = raw_data['0train']
-        elif type_dataset == 'test': raw_data = raw_data['1test']
-        else: raise ValueError("type_dataset must have value train or test")
+        # Note that the two cases of the if return the same data. Simply, after an update of moabb the name used to save them changed.
+        # Due to incosistent behavior I kept the code to handle both version.
+        if 'session_T' in raw_data :
+            if type_dataset == 'train': raw_data = raw_data['session_T']
+            elif type_dataset == 'test': raw_data = raw_data['session_E']
+            else: raise ValueError("type_dataset must have value train or test")
+        elif '0train' in raw_data :
+            if type_dataset == 'train': raw_data = raw_data['0train']
+            elif type_dataset == 'test': raw_data = raw_data['1test']
+            else: raise ValueError("type_dataset must have value train or test")
 
         trials_matrix, labels, ch_list = get_trial_handmade(raw_data, config)
 
@@ -223,8 +229,25 @@ def get_D2a_data(config, type_dataset):
     check_config.check_config_dataset(config)
     mne.set_log_level(False)
     
-    # Select the dataset
-    dataset = mb.BNCI2014_001()
+    # Get dataset 2a. 
+    # Note that moabb changed the name of the dataset removing the underscore (or adding it) after a certain version.
+    # Since I found an inconsistent behavior I try to get the data with both of them.
+    try :
+        dataset = mb.BNCI2014_001()
+        fail_get_dataset_method_1 = False
+    except :
+        fail_get_dataset_method_1 = True
+    
+    if fail_get_dataset_method_1 :
+        try :
+            dataset = mb.BNCI2014001()
+            fail_get_dataset_method_2 = False
+        except :
+            fail_get_dataset_method_2 = True
+    
+    # Check if both download methods of the dataset failed
+    if fail_get_dataset_method_1 and fail_get_dataset_method_2 :
+        raise ValueError("There is some problem with BNCI2014_001 or BNCI2014001 inside moabb")
 
     # Select the paradigm (i.e. the object to download the dataset)
     paradigm = mp.MotorImagery()
