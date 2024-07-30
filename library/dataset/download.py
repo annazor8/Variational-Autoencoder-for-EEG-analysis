@@ -10,8 +10,8 @@ Function related to download the data
 import numpy as np
 import mne
 
-import moabb.datasets as mb
-import moabb.paradigms as mp
+#import moabb.datasets as mb
+#import moabb.paradigms as mp
 from ..config import config_dataset as cd
 from .. import check_config
 

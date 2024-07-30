@@ -15,7 +15,7 @@ import os
 import sys
 import wandb
 import pprint
-
+from torch.utils.tensorboard import SummaryWriter
 # Custom functions
 from . import wandb_support
 from .. import metrics
@@ -105,7 +105,8 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     """
     Function with the training cycle
     """
-
+    #add by anna for tensorboard
+    writer = SummaryWriter(log_dir=train_config['log_dir'])
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # Check train config
     check_config.check_train_config(train_config, model_artifact)
@@ -139,6 +140,11 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         train_loss_list.append(train_loss)
         validation_loss_list.append(validation_loss)
         epoch_list.append(epoch + 1)
+
+        # Log losses to TensorBoard
+        writer.add_scalar('Loss/Train', train_loss.detach().cpu().float(), epoch)
+        writer.add_scalar('Loss/Validation', validation_loss.detach().cpu().float(), epoch)
+
         # Save the new BEST model if a new minimum is reach for the validation loss
         if validation_loss < best_loss_val:
             best_loss_val = validation_loss
@@ -156,6 +162,8 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
             # Compute the various metrics
             train_metrics_dict = metrics.compute_metrics(model, train_loader, train_config['device'])
             validation_metrics_dict = metrics.compute_metrics(model, validation_loader, train_config['device'])
+            writer.add_scalar('Accuracy/Train', train_metrics_dict['accuracy'], epoch)
+            writer.add_scalar('Accuracy/Validation', validation_metrics_dict['accuracy'], epoch)
 
         # (OPTIONAL) Update learning rate (if a scheduler is provided)
         if lr_scheduler is not None:
@@ -198,6 +206,8 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     # Save the model with the best loss on validation set
     if train_config['wandb_training']:
         wandb_support.add_file_to_artifact(model_artifact, '{}/{}'.format(train_config['path_to_save_model'], 'model_BEST.pth'))
+
+    writer.close()
 
 def test(model, test_loader, config):
     print("Metrics at the end of the training (END)")

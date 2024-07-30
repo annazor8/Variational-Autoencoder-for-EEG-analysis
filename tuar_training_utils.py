@@ -1,11 +1,14 @@
 from collections import defaultdict
 from library.analysis import dtw_analysis
-from typing import Dict, List, Tuple
+from typing import Dict
 import numpy as np
 import random
 import os
 import mne
-
+import torch
+import matplotlib.pyplot as plt
+from pathlib import Path
+import gc
 
 def reconstruction_metrics(x_eeg, x_r_eeg, device):
     recon_error_avChannelsF_avTSF = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device,
@@ -30,7 +33,7 @@ def get_data_TUAR(directory_path:str):
     # List all files in the directory
     all_files = os.listdir(directory_path)
     # Filter out only EDF files
-    edf_files = [file for file in all_files if file.endswith('.edf')][0:20]
+    edf_files = [file for file in all_files if file.endswith('.edf')]
 
     # data structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
     session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
@@ -53,6 +56,8 @@ def get_data_TUAR(directory_path:str):
         mean=np.mean(epoch_data)
         std = np.std(epoch_data)
         epoch_data = (epoch_data-mean) / std  # normalization for session
+        del mean
+        del std
         epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
         # If session_data[sub_id][session] exists, concatenate
         all_session.append(epoch_data)
@@ -61,6 +66,9 @@ def get_data_TUAR(directory_path:str):
             session_data[sub_id][new_session] = epoch_data
         else:
             session_data[sub_id][session] = epoch_data
+
+        del epoch_data
+        gc.collect() 
     return session_data
 
 def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], new_min=-100, new_max=100):  # -> np.ndarray, np.ndarray, np.ndarray
@@ -146,3 +154,27 @@ def leave_one_subject_out(session_data, global_min, global_max, number_of_trials
 
     # Get training config
     return combinations, test_data
+
+def plot_ORIGINAL_vs_RECONSTRUCTED(ch_to_plot : str, channels_to_set : list, x_eeg : np.ndarray, x_r_eeg : np.ndarray, trial : int = 3, T : int = 1000, name : str = "signal.png"):
+    t = torch.linspace(0, 4, T)
+    idx = channels_to_set.index(ch_to_plot)
+    # Plot the original and reconstructed signal
+    plt.rcParams.update({'font.size': 20})
+    fig, ax = plt.subplots(1, 1, figsize = (12, 8))
+
+    ax.plot(t, x_eeg.squeeze()[trial] [idx], label = 'Original EEG', color = 'red', linewidth = 2)
+    ax.plot(t, x_r_eeg.squeeze()[trial] [idx], label = 'Reconstructed EEG', color = 'green', linewidth = 1)
+
+    ax.legend()
+    ax.set_xlim([2, 4]) # Note that the original signal is 4s long. Here I plot only 2 second to have a better visualization
+    ax.set_xlabel('Time [s]')
+    ax.set_ylabel(r"Amplitude [$\mu$V]")
+    ax.set_title("Ch. {}".format(ch_to_plot))
+    ax.grid(True)
+
+    fig.tight_layout()
+    base_path = Path(__file__).resolve(strict=True).parent
+
+    print(base_path)
+    plt.savefig(base_path / name)
+    fig.show()
