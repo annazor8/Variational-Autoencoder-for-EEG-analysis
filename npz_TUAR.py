@@ -109,30 +109,32 @@ for indx, combo in enumerate(combinations):  # 220 is the max number of combinat
     validation_data_list=[]
 
     for filepath in train_data_list_path:
-        data=np.load(filepath)['arr_0']
+        data=np.load(filepath, mmap_mode='r')['arr_0']
         train_data_list.append(data)
     del train_data_list_path
-
-    for filepath in validation_data_list_path:
-        data=np.load(filepath)['arr_0']
-        validation_data_list.append(data)  
-
-    del validation_data_list_path
-
-    print("------------------------------session data created---------------------------------------")
     train_data = np.concatenate(train_data_list)
     del train_data_list
 
-    print("train data shape")
-    print(train_data.shape)
+    for filepath in validation_data_list_path:
+        data=np.load(filepath, mmap_mode='r')['arr_0']
+        validation_data_list.append(data)  
+
+    del validation_data_list_path
     validation_data = np.concatenate(validation_data_list)
     del validation_data_list
-    
+    print("------------------------------session data created---------------------------------------")
+
+    print("train data shape")
+    print(train_data.shape)    
     print(validation_data.shape)
+
     train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
     validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
     train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
     validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
+    
+    del train_data
+    del validation_data
 
     train_config = ct.get_config_hierarchical_vEEGNet_training()
     epochs = 80
