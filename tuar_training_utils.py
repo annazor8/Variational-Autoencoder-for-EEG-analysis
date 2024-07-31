@@ -37,7 +37,6 @@ def get_data_TUAR(directory_path:str):
 
     # data structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
     session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
-    all_session=[]
     # Process each EDF file
     for file_name in sorted(edf_files):
         file_path = os.path.join(directory_path, file_name)
@@ -60,7 +59,6 @@ def get_data_TUAR(directory_path:str):
         del std
         epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
         # If session_data[sub_id][session] exists, concatenate
-        all_session.append(epoch_data)
         if session_data[sub_id][session].size > 0:
             new_session = session + '_01'
             session_data[sub_id][new_session] = epoch_data

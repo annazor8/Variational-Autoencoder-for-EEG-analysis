@@ -8,7 +8,7 @@ Contain the function to compute accuracy and other metrics
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 #%% Imports
 
-import numpy as np
+"""import numpy as np
 import torch
 from sklearn.metrics import cohen_kappa_score, accuracy_score, recall_score, f1_score, confusion_matrix
 import os
@@ -25,8 +25,8 @@ def compute_metrics(model, loader, device):
 
 def compute_label(model, loader, device):
     """
-    Method create to compute the label in a dataloader with the model class
-    """
+    #Method create to compute the label in a dataloader with the model class
+"""
     
     model.eval()
     model.to(device)
@@ -68,8 +68,8 @@ def compute_metrics_from_labels(true_label, predict_label):
 
 def compute_specificity_multiclass(true_label, predict_label, weight_sum = True):
     """
-    Compute the average specificity 
-    """
+    #Compute the average specificity 
+"""
 
     binary_specificity_list = []
     weight_list = []
@@ -126,9 +126,9 @@ def compute_multiclass_confusion_matrix(true_label, predict_label):
 
 def compute_metrics_given_path(model, loader_list, path, device = 'cpu'):
     """
-    Function to compute the metrics given a path containing the pth file with the weights of the network.
-    For each pth file load the weight and computer the metrics
-    """
+    #Function to compute the metrics given a path containing the pth file with the weights of the network.
+    #For each pth file load the weight and computer the metrics
+"""
 
     file_list = os.listdir(path)
     
@@ -159,4 +159,4 @@ def compute_metrics_given_path(model, loader_list, path, device = 'cpu'):
             metrics_per_file['f1'].append(f1)
             metrics_per_file['confusion_matrix'].append(confusion_matrix)
 
-    return metrics_per_file
+    return metrics_per_file"""

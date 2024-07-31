@@ -1,3 +1,8 @@
+from collections import defaultdict
+from library.analysis import dtw_analysis
+from typing import Dict
+import os
+import mne
 import torch
 from library.dataset import dataset_time as ds_time
 from library.model import hvEEGNet
@@ -12,7 +17,10 @@ from torch.utils.data import DataLoader
 
 np.random.seed(43)
 
-# Extract combinations1 and test_data1 from the loaded data
+directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
+#directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
+
+#for storing the reconstruction values
 df_reconstruction = pd.DataFrame([], columns=[
     'Reconstruction error with no average_channels and no average_time_samples',
     'Reconstruction error with no average_channels and average_time_samples',
@@ -23,12 +31,104 @@ channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EE
                     'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                     'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
                     'EEG T1-REF', 'EEG T2-REF']
+# List all files in the directory
+all_files = os.listdir(directory_path)
+# Filter out only EDF files
+edf_files = [file for file in all_files if file.endswith('.edf')]
 
-for indx, combo in enumerate(combinations1):  # 220 is the max number of combinations
-    train_data_list: list = combo[0]
-    validation_data_list: list = combo[1]
+# data structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
+session_data: Dict[str, Dict[str, str]] = defaultdict(lambda: defaultdict(str))
+#session_data: Dict[str, Dict[str, str]] = defaultdict(lambda: defaultdict(lambda: str))
+all_session=[]
+# Process each EDF file
+for file_name in sorted(edf_files):
+    file_path = os.path.join(directory_path, file_name)
+    sub_id, session, time = file_name.split(".")[0].split(
+        "_")  # split the filname into subject, session and time frame
+    raw_mne = mne.io.read_raw_edf(file_path,
+                                    preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
+    raw_mne.pick_channels(channels_to_set,
+                            ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
+    raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
+    epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False,
+                                                overlap=3)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
+    del raw_mne
+    epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
+    del epochs_mne
+    mean=np.mean(epoch_data)
+    std = np.std(epoch_data)
+    epoch_data = (epoch_data-mean) / std  # normalization for session
+    del mean
+    del std
+    epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
+    # If session_data[sub_id][session] exists, concatenate
+    #np.savez(sub_id+session+time, epoch_data)
+
+    folder_name = 'npzs'
+    os.makedirs(folder_name, exist_ok=True)
+
+    if session_data[sub_id][session]!= "":
+        new_session = session + '_01'
+        filename= sub_id + new_session + '.npz'
+        file_path = os.path.join(folder_name, filename)
+        np.savez(file_path, epoch_data)
+        session_data[sub_id][new_session] = file_path
+    else:
+        filename=sub_id + session + '.npz'
+        file_path = os.path.join(folder_name, filename)
+        np.savez(file_path, epoch_data)
+        session_data[sub_id][session] = file_path
+
+    del epoch_data
+
+print("------------------------------session data created---------------------------------------")
+#leave one session out 
+list_dict_session = session_data.values()  # the type is dict_values, is a list of paths
+all_sessions_complete = []  # initialize a list containing all sessions
+for el in list_dict_session:
+    all_sessions_complete.extend(list(el.values()))
+all_sessions = all_sessions_complete
+
+test_size = int(np.ceil(0.2 * len(all_sessions)))
+test_data = all_sessions[0:test_size]
+train_val_data = all_sessions[test_size:]
+# list of tuples containing the train data as the fist element and the validation data as the second element
+combinations = []
+for i in range(0, len(train_val_data), 4):
+    # do not make shuffle(train_data[i]) because the temporal sequence of the layers in the 3d matrix is important to be preserved
+    train_data = train_val_data[:i] + train_val_data[i + 4:]  # concatenate the two lists with the + operator
+    val_data = train_val_data[i:i + 4]
+    combinations.append(
+        (train_data, val_data)) 
+    
+print("-------------------------loo done------------------------------------------")
+for indx, combo in enumerate(combinations):  # 220 is the max number of combinations
+    train_data_list_path: list = combo[0]
+    validation_data_list_path: list = combo[1]
+    train_data_list=[]
+    validation_data_list=[]
+
+    for filepath in train_data_list_path:
+        data=np.load(filepath)['arr_0']
+        train_data_list.append(data)
+    del train_data_list_path
+
+    for filepath in validation_data_list_path:
+        data=np.load(filepath)['arr_0']
+        validation_data_list.append(data)  
+
+    del validation_data_list_path
+
+    print("------------------------------session data created---------------------------------------")
     train_data = np.concatenate(train_data_list)
+    del train_data_list
+
+    print("train data shape")
+    print(train_data.shape)
     validation_data = np.concatenate(validation_data_list)
+    del validation_data_list
+    
+    print(validation_data.shape)
     train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
     validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
     train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
@@ -97,7 +197,7 @@ for indx, combo in enumerate(combinations1):  # 220 is the max number of combina
                                         'Reconstruction error with no average_channels and average_time_samples',
                                         'Reconstruction error with average_channels  and no average_time_samples',
                                         'Reconstruction error with average_channels  and average_time_samples'])
-    for x_eeg_ in test_data1:
+    for x_eeg_ in test_data:
         device = train_config['device']
         x_eeg = x_eeg_.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg)
