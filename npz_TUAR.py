@@ -12,7 +12,7 @@ from library.config import config_model as cm
 import os
 import numpy as np
 import pandas as pd 
-from tuar_training_utils import reconstruction_metrics
+from tuar_training_utils import reconstruction_metrics, get_data_TUAR, leave_one_session_out
 from torch.utils.data import DataLoader
 
 np.random.seed(43)
@@ -41,7 +41,9 @@ session_data: Dict[str, Dict[str, str]] = defaultdict(lambda: defaultdict(str))
 #session_data: Dict[str, Dict[str, str]] = defaultdict(lambda: defaultdict(lambda: str))
 all_session=[]
 # Process each EDF file
-for file_name in sorted(edf_files):
+
+
+for file_name in sorted(edf_files)[0:150]:
     file_path = os.path.join(directory_path, file_name)
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
@@ -100,7 +102,7 @@ for i in range(0, len(train_val_data), 4):
     val_data = train_val_data[i:i + 4]
     combinations.append(
         (train_data, val_data)) 
-    
+batch_size = 10
 print("-------------------------loo done------------------------------------------")
 for indx, combo in enumerate(combinations):  # 220 is the max number of combinations
     train_data_list_path: list = combo[0]
@@ -108,20 +110,50 @@ for indx, combo in enumerate(combinations):  # 220 is the max number of combinat
     train_data_list=[]
     validation_data_list=[]
 
-    for filepath in train_data_list_path:
+  
+    """   for filepath in train_data_list_path:
         data=np.load(filepath, mmap_mode='r')['arr_0']
         train_data_list.append(data)
     del train_data_list_path
     train_data = np.concatenate(train_data_list)
-    del train_data_list
-
-    for filepath in validation_data_list_path:
+    del train_data_list"""
+    train_data_=None
+    for i in range(0, len(train_data_list_path), batch_size):
+        batch_paths = train_data_list_path[i:i + batch_size]
+        batch_data = [np.load(filepath, mmap_mode='r')['arr_0'] for filepath in batch_paths]
+    
+        if train_data is None:
+            train_data = np.concatenate(batch_data)
+        else:
+        # Stack the existing train_data_arr with the new batch_data_arr
+            train_data = np.vstack((train_data, np.concatenate(batch_data)))
+        
+    del batch_data
+    del train_data_list_path
+    """for filepath in validation_data_list_path:
         data=np.load(filepath, mmap_mode='r')['arr_0']
         validation_data_list.append(data)  
 
     del validation_data_list_path
     validation_data = np.concatenate(validation_data_list)
-    del validation_data_list
+    del validation_data_list"""
+    
+    # Load validation data in batches
+    for i in range(0, len(validation_data_list_path), batch_size):
+        batch_paths = validation_data_list_path[i:i + batch_size]
+        batch_data = [np.load(filepath, mmap_mode='r')['arr_0'] for filepath in batch_paths]
+        validation_data_batch = np.concatenate(batch_data)
+        del batch_data
+        validation_data_list.append(validation_data_batch)
+        del validation_data_batch  # Clear memory for the next batch
+
+    del validation_data_list_path  # Free memory
+
+    # Concatenate all validation data batches
+    validation_data = np.concatenate(validation_data_list)
+    del validation_data_list 
+    
+
     print("------------------------------session data created---------------------------------------")
 
     print("train data shape")
@@ -132,6 +164,7 @@ for indx, combo in enumerate(combinations):  # 220 is the max number of combinat
     validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
     train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
     validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
+    print("EEG_Dataset function called")
     
     del train_data
     del validation_data

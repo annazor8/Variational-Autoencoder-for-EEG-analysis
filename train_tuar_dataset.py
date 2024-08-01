@@ -7,7 +7,7 @@ from library.config import config_model as cm
 import os
 import numpy as np
 import pandas as pd 
-from tuar_training_utils import reconstruction_metrics
+from tuar_training_utils import reconstruction_metrics, get_data_TUAR, leave_one_session_out
 from torch.utils.data import DataLoader
 
 np.random.seed(43)
@@ -24,6 +24,11 @@ channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EE
                     'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
                     'EEG T1-REF', 'EEG T2-REF']
 
+directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
+session_data=get_data_TUAR(directory_path)
+print("loaded dataset")
+
+combinations1, test_data1 = leave_one_session_out(session_data)  # NB combinations[0][0] is a list, combinations[0][1] is an array
 for indx, combo in enumerate(combinations1):  # 220 is the max number of combinations
     train_data_list: list = combo[0]
     validation_data_list: list = combo[1]

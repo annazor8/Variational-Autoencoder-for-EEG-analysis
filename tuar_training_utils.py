@@ -38,7 +38,7 @@ def get_data_TUAR(directory_path:str):
     # data structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
     session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
     # Process each EDF file
-    for file_name in sorted(edf_files):
+    for file_name in sorted(edf_files)[0:100]:
         file_path = os.path.join(directory_path, file_name)
         sub_id, session, time = file_name.split(".")[0].split(
             "_")  # split the filname into subject, session and time frame
