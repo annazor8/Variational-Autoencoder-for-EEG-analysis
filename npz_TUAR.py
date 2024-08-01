@@ -12,7 +12,7 @@ from library.config import config_model as cm
 import os
 import numpy as np
 import pandas as pd 
-from tuar_training_utils import reconstruction_metrics, get_data_TUAR, leave_one_session_out
+from tuar_training_utils import reconstruction_metrics
 from torch.utils.data import DataLoader
 
 np.random.seed(43)
@@ -43,7 +43,7 @@ all_session=[]
 # Process each EDF file
 
 
-for file_name in sorted(edf_files)[0:150]:
+for file_name in sorted(edf_files):
     file_path = os.path.join(directory_path, file_name)
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
@@ -52,8 +52,7 @@ for file_name in sorted(edf_files)[0:150]:
     raw_mne.pick_channels(channels_to_set,
                             ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
     raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
-    epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False,
-                                                overlap=3)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
+    epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False)  # divide the signal into fixed lenght epoch non overlapping
     del raw_mne
     epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
     del epochs_mne
@@ -63,8 +62,6 @@ for file_name in sorted(edf_files)[0:150]:
     del mean
     del std
     epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
-    # If session_data[sub_id][session] exists, concatenate
-    #np.savez(sub_id+session+time, epoch_data)
 
     folder_name = 'npzs'
     os.makedirs(folder_name, exist_ok=True)
@@ -86,14 +83,14 @@ for file_name in sorted(edf_files)[0:150]:
 print("------------------------------session data created---------------------------------------")
 #leave one session out 
 list_dict_session = session_data.values()  # the type is dict_values, is a list of paths
-all_sessions_complete = []  # initialize a list containing all sessions
+all_sessions= []  # initialize a list containing all sessions
 for el in list_dict_session:
-    all_sessions_complete.extend(list(el.values()))
-all_sessions = all_sessions_complete
+    all_sessions.extend(list(el.values()))
 
 test_size = int(np.ceil(0.2 * len(all_sessions)))
 test_data = all_sessions[0:test_size]
 train_val_data = all_sessions[test_size:]
+
 # list of tuples containing the train data as the fist element and the validation data as the second element
 combinations = []
 for i in range(0, len(train_val_data), 4):
@@ -101,7 +98,9 @@ for i in range(0, len(train_val_data), 4):
     train_data = train_val_data[:i] + train_val_data[i + 4:]  # concatenate the two lists with the + operator
     val_data = train_val_data[i:i + 4]
     combinations.append(
-        (train_data, val_data)) 
+        (train_data, val_data))
+
+del train_data    
 batch_size = 10
 print("-------------------------loo done------------------------------------------")
 for indx, combo in enumerate(combinations):  # 220 is the max number of combinations
@@ -110,14 +109,7 @@ for indx, combo in enumerate(combinations):  # 220 is the max number of combinat
     train_data_list=[]
     validation_data_list=[]
 
-  
-    """   for filepath in train_data_list_path:
-        data=np.load(filepath, mmap_mode='r')['arr_0']
-        train_data_list.append(data)
-    del train_data_list_path
-    train_data = np.concatenate(train_data_list)
-    del train_data_list"""
-    train_data_=None
+    train_data =None
     for i in range(0, len(train_data_list_path), batch_size):
         batch_paths = train_data_list_path[i:i + batch_size]
         batch_data = [np.load(filepath, mmap_mode='r')['arr_0'] for filepath in batch_paths]
@@ -125,8 +117,7 @@ for indx, combo in enumerate(combinations):  # 220 is the max number of combinat
         if train_data is None:
             train_data = np.concatenate(batch_data)
         else:
-        # Stack the existing train_data_arr with the new batch_data_arr
-            train_data = np.vstack((train_data, np.concatenate(batch_data)))
+            train_data = np.concatenate((train_data, np.concatenate(batch_data)))
         
     del batch_data
     del train_data_list_path
@@ -187,8 +178,8 @@ for indx, combo in enumerate(combinations):  # 220 is the max number of combinat
     # Get model
 
     # Get number of channels and length of time samples
-    C = train_data.shape[2]
-    T = train_data.shape[3]
+    C = 22 #train_data.shape[2]
+    T = 1000 #train_data.shape[3]
     # Get model config
     model_config = cm.get_config_hierarchical_vEEGNet(C, T)
 
