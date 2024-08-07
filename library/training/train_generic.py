@@ -127,9 +127,7 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     train_epoch_function, validation_epoch_function = get_train_and_validation_function(model)
-    epoch_list=[]
-    train_loss_list=[]
-    validation_loss_list=[]
+
     for epoch in range(train_config['epochs']):
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # (MANDATORY) Advance epoch, check validation loss and save the network
@@ -143,9 +141,6 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         log_dict['train_loss'] = float(train_loss)
         log_dict['train_loss_recon'] = float(recon_loss)
         log_dict['train_kl_loss'] = float(kl_loss)"""
-        train_loss_list.append(train_loss)
-        validation_loss_list.append(validation_loss)
-        epoch_list.append(epoch + 1)
 
         # Log losses to TensorBoard
         writer.add_scalar('Loss/Train', train_loss.detach().cpu().float(), epoch)
@@ -160,8 +155,8 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
         # Save the model after the epoch
         # N.b. When the variable epoch is n the model is trained for n + 1 epochs when arrive at this instructions.
         if (epoch + 1) % train_config['epoch_to_save_model'] == 0:
-            torch.save(model.state_dict(), '{}/{}'.format(train_config['path_to_save_model'], "model_{}.pth".format(epoch + 1)))
-            torch.save(log_dict, '{}/{}'.format(train_config['path_to_save_model'], "log_dict_{}.pth".format(epoch + 1)))
+            torch.save(model.state_dict(), '{}/{}'.format(train_config['path_to_save_model'], "model_epoch{}.pth".format(epoch + 1)))
+            torch.save(log_dict, '{}/{}'.format(train_config['path_to_save_model'], "log_dict_epoch{}.pth".format(epoch + 1)))
         # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         # (OPTIONAL) Optional steps during the training
 

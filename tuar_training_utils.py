@@ -25,7 +25,7 @@ def reconstruction_metrics(x_eeg, x_r_eeg, device):
                                                                                         average_time_samples=True)
     return recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF, recon_error_avChannelsT_avTST
 
-def get_data_TUAR(directory_path:str):
+def get_data_TUAR(directory_path:str, start_index : int =0, end_index : int = None):
     channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                        'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
@@ -38,7 +38,10 @@ def get_data_TUAR(directory_path:str):
     # data structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
     session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
     # Process each EDF file
-    for file_name in sorted(edf_files)[0:100]:
+    if end_index == None:
+        end_index=len(edf_files) -1
+
+    for file_name in sorted(edf_files)[start_index:end_index]:
         file_path = os.path.join(directory_path, file_name)
         sub_id, session, time = file_name.split(".")[0].split(
             "_")  # split the filname into subject, session and time frame
@@ -47,8 +50,7 @@ def get_data_TUAR(directory_path:str):
         raw_mne.pick_channels(channels_to_set,
                               ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
         raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
-        epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False,
-                                                  overlap=3)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
+        epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
         del raw_mne
         epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
         del epochs_mne

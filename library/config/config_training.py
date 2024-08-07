@@ -75,6 +75,7 @@ def get_config_vEEGNet_training() -> dict:
         name_training_run = None,           # Name of the training run. If None wandb will assign a random name.
         notes = "",                         # If you want to add specific note for a specific training run modify this field.
         debug = True,                       # Set True if you are debuggin the code (Used to delete debug run from wandb)
+        early_stopping=False
     )
 
     return config
