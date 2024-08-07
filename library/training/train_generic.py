@@ -38,7 +38,7 @@ from ..model import hvEEGNet
 from . import train_EEGNet
 from . import train_vEEGNet
 from . import train_hvEEGNet
-    
+from early_stopping import EarlyStopping
 """
 %load_ext autoreload
 %autoreload 2
@@ -107,6 +107,8 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
     """
     #add by anna for tensorboard
     writer = SummaryWriter(log_dir=train_config['log_dir'])
+
+    early_stopping=EarlyStopping(patience=3)
     # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     # Check train config
     check_config.check_train_config(train_config, model_artifact)
@@ -208,6 +210,14 @@ def train(model, loss_function, optimizer, loader_list, train_config, lr_schedul
                 wandb_support.add_file_to_artifact(model_artifact, '{}/{}'.format(train_config['path_to_save_model'], "model_{}.pth".format(epoch + 1)))
             
             wandb.log(log_dict)
+
+         #aggiunto da Anna per early stpping
+        if train_config['early_stopping']:
+            if early_stopping.early_stop(validation_loss):
+                print ("Early stopping")
+                print(epoch)
+                break
+
         
         # End training cycle
     
