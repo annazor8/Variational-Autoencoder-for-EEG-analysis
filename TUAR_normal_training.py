@@ -62,8 +62,8 @@ channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EE
 all_files = os.listdir(directory_path)
     # Filter out only EDF files
 edf_files = [file for file in all_files if file.endswith('.edf')]
-start_index=10
-end_index=30
+start_index=0
+end_index=20
 all_sessions = []
     # dataend_index structure Dict[str, Dict[str, NDArray] --> Dict[subj_id, Dict[sess, NDArray]]
 session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
@@ -71,39 +71,49 @@ session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict
 if end_index == None:
     end_index=len(edf_files) -1
 
+subj_list=[]
+
 for file_name in sorted(edf_files)[start_index:end_index]:
     file_path = os.path.join(directory_path, file_name)
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
-    raw_mne = mne.io.read_raw_edf(file_path,
-                                      preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
-    raw_mne.pick_channels(channels_to_set,
-                              ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
-    raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
-    epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
-    del raw_mne
-    epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
-    del epochs_mne
-    mean=np.mean(epoch_data)
-    std = np.std(epoch_data)
-    epoch_data = (epoch_data-mean) / std  # normalization for session
-    del mean
-    del std
-    epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
-  # initialize a list containing all sessions
-    all_sessions.append(epoch_data)
+    if sub_id in subj_list:
+        continue
+    else:
+        subj_list.append(sub_id)
+        raw_mne = mne.io.read_raw_edf(file_path,
+                                        preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
+        raw_mne.pick_channels(channels_to_set,
+                                ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
+        raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
+        epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
+        del raw_mne
+        epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
+        del epochs_mne
+        mean=np.mean(epoch_data)
+        std = np.std(epoch_data)
+        epoch_data = (epoch_data-mean) / std  # normalization for session
+        del mean
+        del std
+        epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
+    # initialize a list containing all sessions
+        all_sessions.append(epoch_data)
 
 dataset=np.concatenate(all_sessions)
 print(dataset.shape)
 
+print("complete dataset")
 Calculate_statistics(directory_path, start_index=0, end_index=30)
 
 test_size = int(np.ceil(0.2 * len(all_sessions)))
 test_data = np.concatenate(all_sessions[0:test_size])
+print("test set")
 Calculate_statistics(directory_path, start_index=0, end_index=test_size)
 validation_data = np.concatenate(all_sessions[test_size:2*test_size])
+print("validation set")
 Calculate_statistics(directory_path, start_index=test_size, end_index=2*test_size)
 train_data=np.concatenate(all_sessions[2*test_size:])
+print("train set")
 Calculate_statistics(directory_path, start_index=2*test_size, end_index=None)
 
 train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
@@ -121,7 +131,7 @@ del validation_data
 train_config = ct.get_config_hierarchical_vEEGNet_training()
 epochs = 80
 # path_to_save_model = 'model_weights_backup'
-path_to_save_model = 'model_weights_backup1' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
+path_to_save_model = 'model_weights_backup3' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
 os.makedirs(path_to_save_model, exist_ok=True)
 epoch_to_save_model = 1
 
@@ -129,7 +139,7 @@ epoch_to_save_model = 1
 train_config['epochs'] = epochs
 train_config['path_to_save_model'] = path_to_save_model
 train_config['epoch_to_save_model'] = epoch_to_save_model
-train_config['log_dir'] = './logs1'
+train_config['log_dir'] = './logs3'
 os.makedirs(train_config['log_dir'], exist_ok=True)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Get model
