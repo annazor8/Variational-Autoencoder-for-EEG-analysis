@@ -26,7 +26,7 @@ import sys
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 #%% Epochs function
-
+ 
 def train_epoch(model, loss_function, optimizer, train_loader, train_config, log_dict = None):
     # Set the model in training mode
     model.train()

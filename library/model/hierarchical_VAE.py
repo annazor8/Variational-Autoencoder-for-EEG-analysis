@@ -64,7 +64,7 @@ class hVAE(nn.Module):
     def reconstruct(self, x : torch.tensor, no_grad : bool = True) -> torch.tensor:
         """
         Reconstruct the input signal x
-        @param x:  (torch.tensor) Input to reconstruct
+        @param x:  (torch.tensor) Input to reconstruct. The shape must be B x 1 x C x T
         @return no_grad : (bool)(OPTIONAL) Indicate if keep tracking of the gradient. Deafualt = True
 
         @return x_r: (torch.tensor) Reconstructed version of x
@@ -78,21 +78,24 @@ class hVAE(nn.Module):
 
         return output[0]
 
-    def reconstruct_ignoring_latent_spaces(self, x, laten_space_to_ignore: list):
+    def reconstruct_ignoring_latent_spaces(self, x : torch.tensor, latent_space_to_ignore: list):
         """
-        Reconstruct the input x but ignore the sample from some of the latent space
-        x = (Tensor) input to reconstruct
-        laten_space_to_ignore = (list of bool) list with a bool for each cell of the decoder. If True ignore the corresponding latent space
+        Reconstruct the input x but ignore the contribution from some of the latent space
+
+        @param x: (torch.tensor) Input to reconstruct
+        @param laten_space_to_ignore: (list of bool) List with a bool for each cell of the decoder. If True ignore the corresponding latent space
+
+        @return x_r: (torch.tensor) Reconstructed version of x
         """
 
         with torch.no_grad():
-            # Encoder 
+            # Encoder
             z, _, _, encoder_cell_outputs = self.encoder(x)
             
             # Set to 0 the output of the various layer
             # If a an encoder_cell_output is compose by all 0 it is ignored inside the encoder
-            for i in range(len(laten_space_to_ignore)):
-                if laten_space_to_ignore[i] == True:
+            for i in range(len(latent_space_to_ignore)):
+                if latent_space_to_ignore[i] == True:
                     encoder_cell_outputs[i] *= 0
             
             # Decoder
@@ -128,23 +131,26 @@ class hvae_encoder(nn.Module):
 
         return z, mu, sigma, cell_outputs
 
-    def encode(self, x, return_distribution = True, return_shape = False):
+    def encode(self, x : torch.tensor, return_distribution : bool = True, return_shape : bool = False):
         """
         Encode the input tensor x.
         If return_distribution == True the return list will contain the sample from the latent space, the mean and the logvars. Otherwise the method will return the output of the last cell
         If return_shape == True the return list will contain also the shape of the outputs of the various cells
         """
+
+        # with torch.no_grad(): # TODO check why I put here a torch.no_grad
+
         # List with all the variables returned
         return_list = []
 
         # List with the output of each cell of the encoder
         cell_outputs = []
         output_shape = []
-        for cell in self.encoder_modules: 
+        for cell in self.encoder_modules:
             x = cell(x)
             cell_outputs.append(x)
             if return_shape: output_shape.append(x.shape)
-        
+
         # Create the return list
         if return_distribution:
             z, mu, sigma = self.sample_layer_z(x)
@@ -154,8 +160,12 @@ class hvae_encoder(nn.Module):
             return_list.append(sigma)
         else:
             return_list.append(x)
+        
+        # Add the output of hVAE cells to return list
         return_list.append(cell_outputs)
-        if return_shape: return_list.append(output_shape)
+
+        # (OPTIONAL) Add the outuput shape of the various cells to the return list
+        if return_shape : return_list.append(output_shape)
 
         return return_list
 
@@ -315,4 +325,3 @@ class hVAE_decoder(nn.Module):
                 tmp_x = cell(tmp_x)
 
         return tmp_decoder, tmp_sample_layers_z, tmp_sample_layers_z_given_x, tmp_features_combination_z, tmp_features_combination_decoder
-
