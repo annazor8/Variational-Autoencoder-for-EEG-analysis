@@ -9,52 +9,80 @@ import numpy as np
 import pandas as pd 
 from tuar_training_utils import reconstruction_metrics, get_data_TUAR, leave_one_session_out
 from torch.utils.data import DataLoader
-
+import pickle
 np.random.seed(43)
 
 # Extract combinations1 and test_data1 from the loaded data
-df_reconstruction = pd.DataFrame([], columns=[
-    'Reconstruction error with no average_channels and no average_time_samples',
-    'Reconstruction error with no average_channels and average_time_samples',
-    'Reconstruction error with average_channels  and no average_time_samples',
-    'Reconstruction error with average_channels  and average_time_samples'])
+
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                     'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                     'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
                     'EEG T1-REF', 'EEG T2-REF']
 
+new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
+'A1', 'A2', 'Fz', 'Cz', 'Pz', 'E1', 'E2']
+
 directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
-session_data=get_data_TUAR(directory_path)
+session_data=get_data_TUAR(directory_path, start_index=0, end_index=30)
 print("loaded dataset")
+os.makedirs('dataset_cross_val', exist_ok=True)
 
 combinations1, test_data1 = leave_one_session_out(session_data)  # NB combinations[0][0] is a list, combinations[0][1] is an array
+
+file_name='test_data.npy'
+file_path = os.path.join('dataset_cross_val', file_name)
+
+np.save(file_path, np.concatenate(test_data1))
+
 for indx, combo in enumerate(combinations1):  # 220 is the max number of combinations
+    
     train_data_list: list = combo[0]
     validation_data_list: list = combo[1]
+
     train_data = np.concatenate(train_data_list)
     validation_data = np.concatenate(validation_data_list)
+    del train_data_list
+    del validation_data_list
+
     train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
     validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
+
     train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
     validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
+    del train_data
+    del validation_data
+    
+    file_name='dataset{}.npz'.format(indx)
+    file_path = os.path.join('dataset_cross_val', file_name)
 
+    #save as npz for reproducibility
+    np.savez(file_path, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
+    
     train_config = ct.get_config_hierarchical_vEEGNet_training()
-    epochs = 80
-    # path_to_save_model = 'model_weights_backup'
-    path_to_save_model = 'model_weights_backup_{}'.format(
-        indx)  # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
-    os.makedirs(path_to_save_model, exist_ok=True)
-    epoch_to_save_model = 1
 
     # Update train config
+    epochs = 80
     train_config['epochs'] = epochs
+
+    # path_to_save_model = 'model_weights_backup'
+  
+    path_to_save_model = 'model_weights_backup_iteration_{}'.format(indx)  # Folder name
+    file_path = os.path.join('dataset_cross_val', path_to_save_model)  # Full path
+    os.makedirs(file_path, exist_ok=True)
     train_config['path_to_save_model'] = path_to_save_model
+
+    epoch_to_save_model = 1
     train_config['epoch_to_save_model'] = epoch_to_save_model
-    train_config['log_dir'] = './logs'
+
+    log_dir_path = os.path.join('dataset_cross_val', 'logs')  # Combine with 'logs' folder
+
+    # Update train_config with the new log directory path
+    train_config['log_dir'] = log_dir_path
+
+    # Create the logs directory within the "dataset_cross_val" directory
     os.makedirs(train_config['log_dir'], exist_ok=True)
-    # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-    # Get model
+
 
     # Get number of channels and length of time samples
     C = train_data.shape[2]
@@ -65,6 +93,8 @@ for indx, combo in enumerate(combinations1):  # 220 is the max number of combina
     # If the model has also a classifier add the information to training config
     train_config['measure_metrics_during_training'] = model_config['use_classifier']
     train_config['use_classifier'] = model_config['use_classifier']
+
+    train_config['early_stopping'] = False #if you want to activate the early stopping
     # hvEEGNet creation
     model = hvEEGNet.hvEEGNet_shallow(model_config)  # new model is instantiated for each iteration of the loop.
     # Declare loss function
@@ -98,28 +128,47 @@ for indx, combo in enumerate(combinations1):  # 220 is the max number of combina
                                                                             model_artifact=None)
 
     
-    df_tmp = pd.DataFrame([], columns=['Reconstruction error with no average_channels and no average_time_samples',
-                                        'Reconstruction error with no average_channels and average_time_samples',
-                                        'Reconstruction error with average_channels  and no average_time_samples',
-                                        'Reconstruction error with average_channels  and average_time_samples'])
-    for x_eeg_ in test_data1:
-        device = train_config['device']
+    results = [] #list containing the dictionaries
+    av_reconstruction_error=[]
+    i=0
+    to_save_eeg=[]
+    for i in range(test_data1.shape[0]-1):
+    #for i in range(10):
+        x_eeg_=test_data1[i]
         x_eeg = x_eeg_.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg)
-        x_eeg = x_eeg.to(device)
-        model.to(device)
+        x_eeg = x_eeg.unsqueeze(1)  
+        x_eeg = x_eeg.to(train_config['device'])
+        model.to(train_config['device'])
         x_r_eeg = model.reconstruct(x_eeg)
+    
         recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF, recon_error_avChannelsT_avTST = reconstruction_metrics(
-            x_eeg, x_r_eeg, device)
+            x_eeg, x_r_eeg, train_config['device'])
         new_row = {
             'Reconstruction error with no average_channels and no average_time_samples': recon_error_avChannelsF_avTSF,
             'Reconstruction error with no average_channels and average_time_samples': recon_error_avChannelsF_avTST,
             'Reconstruction error with average_channels  and no average_time_samples': recon_error_avChannelsT_avTSF,
             'Reconstruction error with average_channels  and average_time_samples': recon_error_avChannelsT_avTST}
-        df_tmp.append(new_row, ignore_index=True)
+        results.append(new_row)
+        av_reconstruction_error.append(recon_error_avChannelsT_avTST.cpu().numpy())
+        to_save_eeg.append(x_r_eeg.cpu().numpy())
+        i=i+1
 
-    row_test_mean = df_tmp.mean(axis=0)
-    df_reconstruction.append(row_test_mean,
-                            ignore_index=True)  # each row corresponds to a different combination of train/validation to perform on a test set
+    filename='resconstruction_error.pkl'
+    file_path = os.path.join('dataset_cross_val', filename)
+    with open(file_path, 'wb') as file:
+        pickle.dump(results, file)
+
+    to_save_eeg=np.concatenate(to_save_eeg)
+
+    filename='reconstructed_eeg.npz'
+    file_path = os.path.join('dataset_cross_val', filename)
+    np.savez(file_path, x_r_eeg=to_save_eeg)
+
+    df_reconstuction_error = pd.DataFrame(av_reconstruction_error)
+
+    filename='mean_reconstruction_errors.csv'
+    file_path = os.path.join('dataset_cross_val', filename)
+    df_reconstuction_error.to_csv(file_path, index=False)
 
     print('end tuple {}'.format(indx))

@@ -8,7 +8,7 @@ import mne
 import torch
 import matplotlib.pyplot as plt
 from pathlib import Path
-import gc
+from numpy.typing import NDArray
 
 def reconstruction_metrics(x_eeg, x_r_eeg, device):
     recon_error_avChannelsF_avTSF = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device,
@@ -26,10 +26,19 @@ def reconstruction_metrics(x_eeg, x_r_eeg, device):
     return recon_error_avChannelsF_avTSF, recon_error_avChannelsF_avTST, recon_error_avChannelsT_avTSF, recon_error_avChannelsT_avTST
 
 def get_data_TUAR(directory_path:str, start_index : int =0, end_index : int = None):
+    """
+    Returns a doble level dictionary with {subject : {session : array}} where the array corresponds to the value of the session 
+    with trials x 1 x 22 x 1000
+    """
+    
     channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                        'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
                        'EEG T1-REF', 'EEG T2-REF']
+    
+    new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
+'A1', 'A2', 'Fz', 'Cz', 'Pz', 'E1', 'E2']
+    
     # List all files in the directory
     all_files = os.listdir(directory_path)
     # Filter out only EDF files
@@ -39,7 +48,7 @@ def get_data_TUAR(directory_path:str, start_index : int =0, end_index : int = No
     session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict(lambda: np.array([])))
     # Process each EDF file
     if end_index == None:
-        end_index=len(edf_files) -1
+        end_index = len(edf_files) -1
 
     for file_name in sorted(edf_files)[start_index:end_index]:
         file_path = os.path.join(directory_path, file_name)
@@ -49,6 +58,8 @@ def get_data_TUAR(directory_path:str, start_index : int =0, end_index : int = No
                                       preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
         raw_mne.pick_channels(channels_to_set,
                               ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
+        rename_mapping = dict(zip(channels_to_set, new_channel_names))
+        raw_mne.rename_channels(rename_mapping)
         raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
         epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
         del raw_mne
@@ -68,10 +79,9 @@ def get_data_TUAR(directory_path:str, start_index : int =0, end_index : int = No
             session_data[sub_id][session] = epoch_data
 
         del epoch_data
-        gc.collect() 
     return session_data
 
-def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], new_min=-100, new_max=100):  # -> np.ndarray, np.ndarray, np.ndarray
+def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]]):  # -> np.ndarray, np.ndarray, np.ndarray
     """
     Returns splits of sessions leaving one different session out in each fold
     Return:
@@ -94,10 +104,10 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]], new_mi
     train_val_data = all_sessions[test_size:]
     # list of tuples containing the train data as the fist element and the validation data as the second element
     combinations = []
-    for i in range(0, len(train_val_data), 4):
+    for i in range(0, len(train_val_data), 8):
         # do not make shuffle(train_data[i]) because the temporal sequence of the layers in the 3d matrix is important to be preserved
-        train_data = train_val_data[:i] + train_val_data[i + 4:]  # concatenate the two lists with the + operator
-        val_data = train_val_data[i:i + 4]
+        train_data = train_val_data[:i] + train_val_data[i + 8:]  # concatenate the two lists with the + operator
+        val_data = train_val_data[i:i + 8]
         combinations.append(
             (train_data, val_data))  # combinations is a list of tuples (train_data: list, val_data: ndarray)
     return combinations, test_data
@@ -178,3 +188,39 @@ def plot_ORIGINAL_vs_RECONSTRUCTED(ch_to_plot : str, channels_to_set : list, x_e
     print(base_path)
     plt.savefig(base_path / name)
     fig.show()
+
+SCALE_FOR_MICROVOLTS= 1e-6
+
+def create_raw_mne(
+    eeg: NDArray,
+    eeg_ch_list: Sequence[str],
+    eeg_srate: float,
+    scale_microvolts: bool = True,
+    ch_types: Union[str, List[str]] = "eeg",
+) -> mne.io.RawArray:
+    """
+    Create mne object starting from data, eeg_ch_list, eeg_srate,
+
+    Args:
+        eeg: eeg multichannel timeseris
+        eeg_ch_list: channel labels
+        eeg_srate: sampling rate
+        scale_microvolts: flag for scaling signals to uVolt (* 1e-6, default mne). Defaults to True.
+        ch_types: type of signals, could be either a string (e.g., "eeg") or a list with same len of
+            ch_list. Defaults to "eeg".
+
+    Returns:
+        mne.io.RawArray: the mne raw object
+    """
+    info = mne.create_info(
+        ch_names=eeg_ch_list, ch_types=ch_types, sfreq=eeg_srate, verbose=False  # type: ignore
+    )
+    if isinstance(ch_types, list):
+        scale = np.array([SCALE_FOR_MICROVOLTS if chtype == "eeg" else 1 for chtype in ch_types])
+    else:
+        scale = SCALE_FOR_MICROVOLTS
+
+    info.set_montage("standard_1020", match_alias=False, match_case=False, verbose=False)
+    data_ = scale * eeg if scale_microvolts else eeg
+    return mne.io.RawArray(data_, info, verbose=False)
+
