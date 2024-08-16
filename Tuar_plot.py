@@ -15,7 +15,9 @@ def electrodes_name(standard_montage_name : str):
     # Print the electrode names alphabetically
     for name in electrode_names:
         print(name)
-
+#/home/azorzetto/train6/dataset/test_data.npy
+data = np.load('/home/azorzetto/train6/dataset.npz')
+test_data=data['test_data']
 directory_path='/home/azorzetto/dataset/01_tcp_ar'
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
@@ -74,18 +76,5 @@ for file_name in sorted(os.listdir(directory_path)):
         fig.legend()
         fig.suptitle(f'EEG Data Visualization {sub_id} {session} {time}', fontsize=20)
 
-        x = np.linspace(-2 * np.pi, 2 * np.pi, 1000)
-        y = np.sin(x)
-
-        # Crea il grafico
-        plt.figure(figsize=(10, 6))
-        plt.plot(x, y, label='y = sin(x)')
-        plt.title('Grafico della funzione seno')
-        plt.xlabel('x')
-        plt.ylabel('y')
-        plt.axhline(0, color='black',linewidth=0.5)
-        plt.axvline(0, color='black',linewidth=0.5)
-        plt.grid(color = 'gray', linestyle = '--', linewidth = 0.5)
-        plt.legend()
         plt.show()
 
