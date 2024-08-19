@@ -9,6 +9,7 @@ import torch
 import matplotlib.pyplot as plt
 from pathlib import Path
 from numpy.typing import NDArray
+from typing import Sequence, Union, List
 
 def reconstruction_metrics(x_eeg, x_r_eeg, device):
     recon_error_avChannelsF_avTSF = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device,
