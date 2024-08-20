@@ -71,10 +71,10 @@ for file_name in sorted(edf_files)[start_index:end_index]:
     file_path = os.path.join(directory_path, file_name)
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
-    if sub_id in subj_list:
+    """if sub_id in subj_list:
         continue
     else:
-        subj_list.append(sub_id)
+        subj_list.append(sub_id)"""
     raw_mne = mne.io.read_raw_edf(file_path,
                                     preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
     raw_mne.pick_channels(channels_to_set,
@@ -97,7 +97,7 @@ dataset=np.concatenate(all_sessions)
 print(dataset.shape)
 
 print("complete dataset")
-Calculate_statistics(directory_path, start_index=0, end_index=25)
+Calculate_statistics(directory_path, start_index=0, end_index=10)
 
 test_size = int(np.ceil(0.2 * len(all_sessions)))
 test_data = np.concatenate(all_sessions[0:test_size])
