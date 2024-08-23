@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import mpld3
 
-train_session=8
-last_epoch=80
+train_session='Shuffle_jrj2'
+last_epoch=200
 train_loss=[]
 validation_loss=[]
 neg_value = -1e6  
@@ -16,23 +16,26 @@ t=0
 #for i in range(0, last_epoch, 5):
 
 for i in range(last_epoch):
-    pat_to_dict="/home/azorzetto/train{}/model_weights_backup{}/log_dict_epoch{}.pth".format(train_session, train_session, i+1) 
-    #pat_to_dict="/home/azorzetto/trainShuffle/model_weights_backup_shuffle/log_dict_epoch{}.pth".format(i+5) #i+1 se non è shuffle
+    #pat_to_dict="/home/azorzetto/train{}/model_weights_backup{}/log_dict_epoch{}.pth".format(train_session, train_session, i+1) 
+    pat_to_dict="/home/azorzetto/trainShuffle_jrj2/model_weights_backup_shuffle_jrj2/log_dict_epoch{}.pth".format(i+1) #i+1 se non è shuffleformat(i+5)
     log_dict = torch.load(pat_to_dict)
     if np.isnan(log_dict['train_loss']):
-        train_loss.append(neg_value)
+        #train_loss.append(neg_value)
+        train_loss.append(log_dict['train_loss'])
         j=j+1
     else:
         train_loss.append(log_dict['train_loss'])
     if np.isnan(log_dict['validation_loss']):
-        validation_loss.append(neg_value)
+        #validation_loss.append(neg_value)
+        validation_loss.append(log_dict['validation_loss'])
         t=t+1
     else:
         validation_loss.append(log_dict['validation_loss'])
 
+
 print("nan values in training loss {}".format(j))
 print("nan values in validation loss {}".format(t))
-epochs = range(1, 81)
+epochs = range(1, 201)
 df_train=pd.DataFrame(train_loss, columns=['Train Loss'])
 df_train.to_csv("/home/azorzetto/train_loss.csv".format(train_session), index=False)
 df_val=pd.DataFrame(validation_loss, columns=['Validation Loss'])

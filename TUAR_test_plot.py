@@ -10,10 +10,10 @@ import torch
 from pathlib import Path
 import pickle
 
-
+train_session=1
 #load the test data
-data = np.load('/home/azorzetto/train2/dataset.npz')
-x_r_eeg=np.load('/home/azorzetto/train2/reconstructed_eeg.npz')
+data = np.load('/home/azorzetto/train{}/dataset.npz'.format(train_session))
+x_r_eeg=np.load('/home/azorzetto/train{}/reconstructed_eeg.npz'.format(train_session))
 
 x_r_eeg=x_r_eeg['x_r_eeg']
 test_data=data['test_data']
@@ -21,7 +21,7 @@ test_data=data['test_data']
 new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
 'A1', 'A2', 'Fz', 'Cz', 'Pz', 'T1', 'T2']
 #load the Reconstruction error with average_channels  and average_time_samples
-df_mean_reconstruction_err = pd.read_csv('/home/azorzetto/train2/mean_reconstruction_errors.csv')
+df_mean_reconstruction_err = pd.read_csv('/home/azorzetto/train{}/mean_reconstruction_errors.csv'.format(train_session))
 mean_reconstruction_err = df_mean_reconstruction_err.iloc[:, 0].to_numpy()
 
 min_rec_error=np.min(mean_reconstruction_err)
@@ -36,7 +36,7 @@ indx_max_rec_error=np.argmax(mean_reconstruction_err)
 x_eeg_min = test_data[indx_min_rec_error] #.float().double() #nd array
 
 x_r_eeg_min = x_r_eeg[indx_min_rec_error] #ndarray
-with open('/home/azorzetto/train2/resconstruction_error.pkl', 'rb') as file:
+with open('/home/azorzetto/train{}/resconstruction_error.pkl'.format(train_session), 'rb') as file:
     reconstruction_error = pickle.load(file)
 
 best_ch=np.argmin(reconstruction_error[indx_min_rec_error] ['Reconstruction error with no average_channels and average_time_samples'])
@@ -60,7 +60,7 @@ for idx_ch, ch in enumerate(new_channel_names):
     # Adjust layout
     plt.tight_layout()
 
-    output_path = Path('/home/azorzetto/train2/img_min_rec_error/{}.png'.format(ch))
+    output_path = Path('/home/azorzetto/train{}/img_min_rec_error/{}.png'.format(train_session, ch))
     plt.savefig(output_path)
     plt.close()
 
@@ -85,7 +85,7 @@ for idx_ch, ch in enumerate(new_channel_names):
     ax.grid(True)
     fig.tight_layout()
 
-    output_path = Path('/home/azorzetto/train2/img_max_rec_error/{}.png'.format(ch))
+    output_path = Path('/home/azorzetto/train{}/img_max_rec_error/{}.png'.format(train_session, ch))
     plt.savefig(output_path)
 
 worse_ch=np.argmax(reconstruction_error[indx_max_rec_error] ['Reconstruction error with no average_channels and average_time_samples'])

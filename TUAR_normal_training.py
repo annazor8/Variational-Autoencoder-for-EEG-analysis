@@ -44,8 +44,8 @@ import pickle
 
 np.random.seed(43)
     
-#directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
-directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
+directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
+#directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
@@ -57,7 +57,7 @@ all_files = os.listdir(directory_path)
 edf_files = [file for file in all_files if file.endswith('.edf')]
 
 start_index=0
-end_index=10
+end_index=25
 # Process each EDF file
 if start_index == None:
     start_index=0
@@ -118,7 +118,7 @@ train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
 validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
 
 #save as npz for reproducibility
-np.savez_compressed('dataset.npz', test_data=test_data, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
+np.savez_compressed('/home/azorzetto/train5/dataset.npz', test_data=test_data, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
 
 train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
 validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)

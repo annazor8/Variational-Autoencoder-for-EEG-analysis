@@ -45,7 +45,7 @@ import pickle
 np.random.seed(43)
     
 #directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
-directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
+"""directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
@@ -125,13 +125,18 @@ validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
 np.savez('dataset.npz', test_data=test_data, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
 
 
-print("EEG_Dataset function called")
+print("EEG_Dataset function called")"""
+
+dataset = np.load('/home/azorzetto/trainShuffle_jrj2/dataset.npz')
+
+train_data = dataset['train_data']
+test_data= dataset['test_data']
 
 # Get number of channels and length of time samples
 C = train_data.shape[2]
 T = train_data.shape[3]
 del train_data
-del validation_data
+#del validation_data
 
 
 if torch.cuda.is_available():
@@ -149,7 +154,7 @@ model = hvEEGNet.hvEEGNet_shallow(model_config)  # new model is instantiated for
 # This method return the PyTorch loss function required by the training function.
 # The loss function for hvEEGNet is not directy implemented in PyTorch since it is a combination of different losses. So I have to create my own function to combine all the components.
 
-model.load_state_dict(torch.load('./model_weights_backup1/model_epoch80.pth', map_location = torch.device('cpu')))
+model.load_state_dict(torch.load('/home/azorzetto/trainShuffle_jrj2/model_weights_backup_shuffle_jrj2/model_epoch82.pth', map_location = torch.device('cpu')))
 
 # Move the model to training device (CPU/GPU)
 model.to(device)
@@ -159,7 +164,7 @@ results = [] #list containing the dictionaries
 av_reconstruction_error=[]
 i=0
 to_save_eeg=[]
-for i in range(test_data.shape[0]-1):
+for i in range(test_data.shape[0]):
 #for i in range(10):
     x_eeg_=test_data[i]
     x_eeg = x_eeg_.astype(np.float32)
@@ -180,13 +185,13 @@ for i in range(test_data.shape[0]-1):
     av_reconstruction_error.append(recon_error_avChannelsT_avTST.cpu().numpy())
     to_save_eeg.append(x_r_eeg.cpu().numpy())
     i=i+1
-
-with open('resconstruction_error.pkl', 'wb') as file:
+print()
+with open('/home/azorzetto/trainShuffle_jrj2/resconstruction_error_epoch62.pkl', 'wb') as file:
     pickle.dump(results, file)
 
 to_save_eeg=np.concatenate(to_save_eeg)
-np.savez('reconstructed_eeg.npz', x_r_eeg=to_save_eeg)
+np.savez_compressed('/home/azorzetto/trainShuffle_jrj2/reconstructed_eeg_error_epoch62.npz', x_r_eeg=to_save_eeg)
 
 df_reconstuction_error = pd.DataFrame(av_reconstruction_error)
 
-df_reconstuction_error.to_csv('mean_reconstruction_errors.csv', index=False)
+df_reconstuction_error.to_csv('/home/azorzetto/trainShuffle_jrj2/mean_reconstruction_errors_error_epoch62.csv', index=False)
