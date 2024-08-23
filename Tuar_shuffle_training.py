@@ -22,6 +22,7 @@ directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
 #directory_path="/content"
 #directory_path='/home/azorzetto/dataset/01_tcp_ar'
 #directory_path = '/home/lmonni/Documents/01_tcp_ar'
+directory_path="/home/azorzetto/data1/01_tcp_ar_jrj"
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
@@ -143,9 +144,16 @@ shuffle_indices = np.random.permutation(dataset.shape[0])
 dataset=dataset[shuffle_indices]
 dataset_artifact=dataset_artifact[shuffle_indices]
 
-dataset=dataset[0:250]
-dataset_artifact=dataset_artifact[0:250]
+#dataset=dataset[0:300]
+#dataset_artifact=dataset_artifact[0:300]
+scaled_dataset=[]
 
+for j in range(dataset.shape[0]):
+    X_min=np.min(dataset[j,:,:,:])
+    X_max=np.max(dataset[j,:,:,:])
+    x=dataset[j,:,:,:]
+    scaled_dataset.append(200 * (x - X_min) / (X_max - X_min) - 100)
+scaled_dataset=np.concatenate(scaled_dataset)
 perc_artifacts=dataset_artifact.sum()/dataset_artifact.size *100
 perc_clean= (dataset_artifact.size - dataset_artifact.sum())/dataset_artifact.size *100
 print(f"percentage artifactual dataset in the whole dataset: {perc_artifacts}")
@@ -190,9 +198,9 @@ del train_data
 del validation_data
 
 train_config = ct.get_config_hierarchical_vEEGNet_training()
-epochs = 80
+epochs = 200
 # path_to_save_model = 'model_weights_backup'
-path_to_save_model = 'model_weights_backup_shuffle1' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
+path_to_save_model = 'model_weights_backup_shuffle_jrj2' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
 os.makedirs(path_to_save_model, exist_ok=True)
 epoch_to_save_model = 5
 
@@ -200,7 +208,7 @@ epoch_to_save_model = 5
 train_config['epochs'] = epochs
 train_config['path_to_save_model'] = path_to_save_model
 train_config['epoch_to_save_model'] = epoch_to_save_model
-train_config['log_dir'] = './logs_shuffle1'
+train_config['log_dir'] = './logs_shuffle_jrj2'
 os.makedirs(train_config['log_dir'], exist_ok=True)
 train_config['early_stopping'] = False #if you want to activate the early stopping
 

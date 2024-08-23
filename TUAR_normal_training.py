@@ -73,12 +73,10 @@ for file_name in sorted(edf_files)[start_index:end_index]:
     
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
-    """if sub_id in subj_list:
+    if sub_id in subj_list:
         continue
     else:
-        subj_list.append(sub_id)"""
-    csv_file_path=file_path.split(".")[0]+".csv"
-    
+        subj_list.append(sub_id)
     raw_mne = mne.io.read_raw_edf(file_path,
                                     preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
     raw_mne.pick_channels(channels_to_set,
@@ -138,7 +136,7 @@ del validation_data
 train_config = ct.get_config_hierarchical_vEEGNet_training()
 epochs = 80
 # path_to_save_model = 'model_weights_backup'
-path_to_save_model = 'model_weights_backup0' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
+path_to_save_model = 'model_weights_backup7' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
 os.makedirs(path_to_save_model, exist_ok=True)
 epoch_to_save_model = 1
 
@@ -146,7 +144,7 @@ epoch_to_save_model = 1
 train_config['epochs'] = epochs
 train_config['path_to_save_model'] = path_to_save_model
 train_config['epoch_to_save_model'] = epoch_to_save_model
-train_config['log_dir'] = './logs0'
+train_config['log_dir'] = './logs7'
 os.makedirs(train_config['log_dir'], exist_ok=True)
 train_config['early_stopping'] = False #if you want to activate the early stopping
 
