@@ -9,6 +9,7 @@ import torch
 import matplotlib.pyplot as plt
 from pathlib import Path
 from numpy.typing import NDArray
+from typing import Sequence, Union, List
 
 def reconstruction_metrics(x_eeg, x_r_eeg, device):
     recon_error_avChannelsF_avTSF = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device,
@@ -91,26 +92,22 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]]):  # ->
     # a list of the dictionaries [{session: arrays}, {session: arrays}, {session: arrays},...]
     # list of defautdict [{'session': array}]
     list_dict_session = session_data.values()  # the type is dict_values
-    all_sessions_complete = []  # initialize a list containing all sessions
+    all_sessions = []  # initialize a list containing all sessions
     for el in list_dict_session:
-        all_sessions_complete.extend(list(el.values()))
-    all_sessions = all_sessions_complete
-    #for el in all_sessions_complete:
-    #    el=((el - global_min) / ( global_max- global_min)) * (new_max - new_min) + new_min
-    #    all_sessions.append(el)
+        all_sessions.extend(list(el.values()))
 
     test_size = int(np.ceil(0.2 * len(all_sessions)))
     test_data = all_sessions[0:test_size]
     train_val_data = all_sessions[test_size:]
     # list of tuples containing the train data as the fist element and the validation data as the second element
     combinations = []
-    for i in range(0, len(train_val_data), 8):
+    for i in range(0, len(train_val_data), 2): #2 because 20% in validation and 2 sessions are the 20% of the total of 10 sessions
         # do not make shuffle(train_data[i]) because the temporal sequence of the layers in the 3d matrix is important to be preserved
-        train_data = train_val_data[:i] + train_val_data[i + 8:]  # concatenate the two lists with the + operator
-        val_data = train_val_data[i:i + 8]
+        train_data = train_val_data[:i] + train_val_data[i + 2:]  # concatenate the two lists with the + operator
+        val_data = train_val_data[i:i + 2]
         combinations.append(
             (train_data, val_data))  # combinations is a list of tuples (train_data: list, val_data: ndarray)
-    return combinations, test_data
+    return combinations, np.concatenate(test_data)
 
 
 def leave_one_subject_out(session_data, global_min, global_max, number_of_trials: int = 64, shuffle: bool = True):

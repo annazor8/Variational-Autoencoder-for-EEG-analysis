@@ -23,8 +23,9 @@ channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EE
 new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
 'A1', 'A2', 'Fz', 'Cz', 'Pz', 'E1', 'E2']
 
-directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
-session_data=get_data_TUAR(directory_path, start_index=0, end_index=30)
+#directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
+directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
+session_data=get_data_TUAR(directory_path, start_index=10, end_index=20)
 print("loaded dataset")
 os.makedirs('dataset_cross_val', exist_ok=True)
 
@@ -33,7 +34,7 @@ combinations1, test_data1 = leave_one_session_out(session_data)  # NB combinatio
 file_name='test_data.npy'
 file_path = os.path.join('dataset_cross_val', file_name)
 
-np.save(file_path, np.concatenate(test_data1))
+np.savez_compressed(file_path, np.concatenate(test_data1))
 
 for indx, combo in enumerate(combinations1):  # 220 is the max number of combinations
     
@@ -50,15 +51,18 @@ for indx, combo in enumerate(combinations1):  # 220 is the max number of combina
 
     train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
     validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
-    del train_data
-    del validation_data
+    # Get number of channels and length of time samples
+    C = train_data.shape[2]
+    T = train_data.shape[3]
     
-    file_name='dataset{}.npz'.format(indx)
+    file_name='dataset_iteration_{}.npz'.format(indx)
     file_path = os.path.join('dataset_cross_val', file_name)
 
     #save as npz for reproducibility
-    np.savez(file_path, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
-    
+    np.savez_compressed(file_path, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
+    del train_data
+    del validation_data
+
     train_config = ct.get_config_hierarchical_vEEGNet_training()
 
     # Update train config
@@ -72,10 +76,10 @@ for indx, combo in enumerate(combinations1):  # 220 is the max number of combina
     os.makedirs(file_path, exist_ok=True)
     train_config['path_to_save_model'] = path_to_save_model
 
-    epoch_to_save_model = 1
+    epoch_to_save_model = 5
     train_config['epoch_to_save_model'] = epoch_to_save_model
 
-    log_dir_path = os.path.join('dataset_cross_val', 'logs')  # Combine with 'logs' folder
+    log_dir_path = os.path.join('dataset_cross_val', 'logs{}'.format(indx))  # Combine with 'logs' folder
 
     # Update train_config with the new log directory path
     train_config['log_dir'] = log_dir_path
@@ -84,9 +88,7 @@ for indx, combo in enumerate(combinations1):  # 220 is the max number of combina
     os.makedirs(train_config['log_dir'], exist_ok=True)
 
 
-    # Get number of channels and length of time samples
-    C = train_data.shape[2]
-    T = train_data.shape[3]
+ 
     # Get model config
     model_config = cm.get_config_hierarchical_vEEGNet(C, T)
 
@@ -154,20 +156,20 @@ for indx, combo in enumerate(combinations1):  # 220 is the max number of combina
         to_save_eeg.append(x_r_eeg.cpu().numpy())
         i=i+1
 
-    filename='resconstruction_error.pkl'
+    filename='resconstruction_error_iteration_{}.pkl'.format(indx)
     file_path = os.path.join('dataset_cross_val', filename)
     with open(file_path, 'wb') as file:
         pickle.dump(results, file)
 
     to_save_eeg=np.concatenate(to_save_eeg)
 
-    filename='reconstructed_eeg.npz'
+    filename='reconstructed_eeg_iteration_{}.npz'.format(indx)
     file_path = os.path.join('dataset_cross_val', filename)
-    np.savez(file_path, x_r_eeg=to_save_eeg)
+    np.savez_compressed(file_path, x_r_eeg=to_save_eeg)
 
     df_reconstuction_error = pd.DataFrame(av_reconstruction_error)
 
-    filename='mean_reconstruction_errors.csv'
+    filename='mean_reconstruction_errors_iteration_{}.csv'.format(indx)
     file_path = os.path.join('dataset_cross_val', filename)
     df_reconstuction_error.to_csv(file_path, index=False)
 
