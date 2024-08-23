@@ -38,7 +38,7 @@ def get_data_TUAR(directory_path:str, start_index : int =0, end_index : int = No
                        'EEG T1-REF', 'EEG T2-REF']
     
     new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
-'A1', 'A2', 'Fz', 'Cz', 'Pz', 'E1', 'E2'] #prova
+'A1', 'A2', 'Fz', 'Cz', 'Pz', 'E1', 'E2']
     # List all files in the directory
     all_files = os.listdir(directory_path)
     # Filter out only EDF files
