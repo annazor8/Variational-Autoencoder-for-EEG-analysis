@@ -5,6 +5,9 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from mne.channels import make_standard_montage
+import mpld3
+import matplotlib.pyplot as plt
+from mne.viz import plot_raw
 
 
 
@@ -32,15 +35,12 @@ new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2',
 'A1', 'A2', 'Fz', 'Cz', 'Pz', 'P5', 'P6']
 # Create a mapping from old names to new names
 rename_mapping = dict(zip(channels_to_set, new_channel_names))
-    # List all files in the directory
-all_files = os.listdir(directory_path)
-    # Filter out only EDF files
-edf_files = [file for file in all_files if file.endswith('.edf')]
+
 
 
 
 # Loop through each EDF file
-for file_name in sorted(os.listdir(directory_path)):
+for file_name in sorted(os.listdir(directory_path))[0:5]:
     if file_name.endswith('.edf'):
         file_path = os.path.join(directory_path, file_name)
         
@@ -49,16 +49,12 @@ for file_name in sorted(os.listdir(directory_path)):
 
         # Load the EDF file
         raw_mne = mne.io.read_raw_edf(file_path, preload=True)  #instance of the Raw class, specifically a subclass of Raw tailored for EDF files, called RawEDF
-        raw_mne.plot(scalings='auto', block=True)
-
-
         print(raw_mne.info['ch_names'])
         raw_mne.rename_channels(rename_mapping)
         print(raw_mne.info['ch_names'])
         # Pick and reorder channels
         raw_mne.pick_channels(new_channel_names, ordered=True)
         print(raw_mne.info['ch_names'])
-
         
         # Resample the data to 250 Hz
         raw_mne.resample(250)
@@ -67,14 +63,14 @@ for file_name in sorted(os.listdir(directory_path)):
         
         # Apply the montage to your raw data
         raw_mne.set_montage(montage)
-        raw_mne.plot(scalings='auto', block=True)
-       
+
+        fig_raw=raw_mne.plot(scalings='auto', block=True, show=True, title=sub_id+session+time)
+
+        #mpld3.save_html(fig_raw, "/home/azorzetto/EEG_plot/{}_{}_{}.html".format(sub_id, session, time))
+
         # Get the data and sampling frequency
         spectrum=raw_mne.compute_psd(fmax=70)
-        fig = spectrum.plot(picks="data", exclude="bads", amplitude=False)
-        plt.show()
-        fig.legend()
-        fig.suptitle(f'EEG Data Visualization {sub_id} {session} {time}', fontsize=20)
-
-        plt.show()
-
+        fig_spectrum= spectrum.plot(picks="data", exclude="bads", amplitude=False)
+        
+        fig_spectrum.suptitle(sub_id+session+time)
+        mpld3.save_html(fig_spectrum, "/home/azorzetto/PSD_plot/{}_{}_{}.html".format(sub_id, session, time))

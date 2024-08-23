@@ -114,7 +114,7 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]]):  # ->
     return combinations, test_data
 
 
-def leave_one_subject_out(session_data, global_min, global_max, number_of_trials: int = 64, shuffle: bool = True):
+def leave_one_subject_out(session_data, number_of_trials : int =50):
     # initialize an empty dictionary: Dict[str, Dict[str, NDArray]
     subject_data_dict: Dict[str, list] = defaultdict(lambda: list)
     for subj, value in session_data.items():  # key is the subj, value is a dictionary
@@ -125,9 +125,6 @@ def leave_one_subject_out(session_data, global_min, global_max, number_of_trials
     # Get training config
     subjects = list(subject_data_dict.keys())  # list of subjects
     test_size = int(np.ceil(0.2 * len(subjects)))  # train size is the 20% of the total size
-
-    if shuffle == True:
-        random.shuffle(subjects)  # metto un controllo sullo shuffle dei soggetti
 
     test_data_complete = []  # prendo una sessione per ogni soggetto che uso nel test set
     for i in range(test_size):
@@ -140,9 +137,10 @@ def leave_one_subject_out(session_data, global_min, global_max, number_of_trials
             el = list(subject_data_dict[subjects[i]])[j]
             test_data_complete.append(el)
     test_data = []
-    for el in test_data_complete:
+
+    """for el in test_data_complete:
         i = random.randint(0, el.shape[0] - number_of_trials)
-        test_data.append(el[i:i + number_of_trials, :, :, :])
+        test_data.append(el[i:i + number_of_trials, :, :, :])"""
 
     train_val_data_complete = []
     for k in range(test_size, len(subjects)):
@@ -152,11 +150,11 @@ def leave_one_subject_out(session_data, global_min, global_max, number_of_trials
             j = random.randint(0, len(list(subject_data_dict[subjects[k]])) - 1)
             el = list(subject_data_dict[subjects[k]])[j]
             train_val_data_complete.append(el)
-
-    train_val_data = []
+    train_val_data = train_val_data_complete #remove this line if I use the number of trials 
+    """train_val_data = []
     for el in train_val_data_complete:
         i = random.randint(0, el.shape[0] - number_of_trials)
-        train_val_data.append(el[i:i + number_of_trials, :, :, :])
+        train_val_data.append(el[i:i + number_of_trials, :, :, :])"""
     combinations: list = []
     for i in range(len(train_val_data)):
         train_data: list = train_val_data[:i] + train_val_data[i + 1:]

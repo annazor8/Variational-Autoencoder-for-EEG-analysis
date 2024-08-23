@@ -127,7 +127,7 @@ np.savez('dataset.npz', test_data=test_data, validation_data=validation_data, tr
 
 print("EEG_Dataset function called")"""
 
-dataset = np.load('/home/azorzetto/train5/dataset.npz')
+dataset = np.load('/home/azorzetto/trainShuffle_jrj2/dataset.npz')
 
 train_data = dataset['train_data']
 test_data= dataset['test_data']
@@ -154,7 +154,7 @@ model = hvEEGNet.hvEEGNet_shallow(model_config)  # new model is instantiated for
 # This method return the PyTorch loss function required by the training function.
 # The loss function for hvEEGNet is not directy implemented in PyTorch since it is a combination of different losses. So I have to create my own function to combine all the components.
 
-model.load_state_dict(torch.load('/home/azorzetto/train5/model_weights_backup5/model_epoch9.pth', map_location = torch.device('cpu')))
+model.load_state_dict(torch.load('/home/azorzetto/trainShuffle_jrj2/model_weights_backup_shuffle_jrj2/model_epoch82.pth', map_location = torch.device('cpu')))
 
 # Move the model to training device (CPU/GPU)
 model.to(device)
@@ -186,12 +186,12 @@ for i in range(test_data.shape[0]):
     to_save_eeg.append(x_r_eeg.cpu().numpy())
     i=i+1
 print()
-with open('/home/azorzetto/train5/resconstruction_error.pkl', 'wb') as file:
+with open('/home/azorzetto/trainShuffle_jrj2/resconstruction_error_epoch62.pkl', 'wb') as file:
     pickle.dump(results, file)
 
 to_save_eeg=np.concatenate(to_save_eeg)
-np.savez_compressed('/home/azorzetto/train5/reconstructed_eeg.npz', x_r_eeg=to_save_eeg)
+np.savez_compressed('/home/azorzetto/trainShuffle_jrj2/reconstructed_eeg_error_epoch62.npz', x_r_eeg=to_save_eeg)
 
 df_reconstuction_error = pd.DataFrame(av_reconstruction_error)
 
-df_reconstuction_error.to_csv('/home/azorzetto/train5/mean_reconstruction_errors.csv', index=False)
+df_reconstuction_error.to_csv('/home/azorzetto/trainShuffle_jrj2/mean_reconstruction_errors_error_epoch62.csv', index=False)

@@ -55,7 +55,8 @@ channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EE
 all_files = os.listdir(directory_path)
     # Filter out only EDF files
 edf_files = [file for file in all_files if file.endswith('.edf')]
-
+total_duration=0
+total_artifacts_duration=0
 start_index=0
 end_index=25
 # Process each EDF file
@@ -69,12 +70,15 @@ subj_list=[]
 all_sessions = []
 for file_name in sorted(edf_files)[start_index:end_index]:
     file_path = os.path.join(directory_path, file_name)
+    
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
     """if sub_id in subj_list:
         continue
     else:
         subj_list.append(sub_id)"""
+    csv_file_path=file_path.split(".")[0]+".csv"
+    
     raw_mne = mne.io.read_raw_edf(file_path,
                                     preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
     raw_mne.pick_channels(channels_to_set,
