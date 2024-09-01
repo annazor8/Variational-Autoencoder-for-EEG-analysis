@@ -38,4 +38,4 @@ def Calculate_statistics(directory_path, start_index : int =0, end_index : int =
     print(f"Percentage artifacts in the dataset: {perc_artifacts}")
     print(f"Percentage clean eeg in the dataset: {perc_clean_dataset}")
 
-Calculate_statistics(directory_path='C:\Users\albin\OneDrive\Desktop\tirocinio\dataset1\home\edf\01_tcp_ar', start_index=0, end_index=10)
+#Calculate_statistics(directory_path='C:\Users\albin\OneDrive\Desktop\tirocinio\dataset1\home\edf\01_tcp_ar', start_index=0, end_index=10)
