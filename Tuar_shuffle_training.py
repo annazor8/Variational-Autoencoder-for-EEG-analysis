@@ -20,9 +20,9 @@ import pickle
 np.random.seed(43)
 directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
 #directory_path="/content"
-#directory_path='/home/azorzetto/dataset/01_tcp_ar'
+directory_path='/home/azorzetto/dataset/01_tcp_ar'
 #directory_path = '/home/lmonni/Documents/01_tcp_ar'
-directory_path="/home/azorzetto/data1/01_tcp_ar_jrj"
+directory_path="/home/azorzetto/dataset/01_tcp_ar_jrj/"
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
@@ -89,15 +89,16 @@ for file_name in sorted(edf_files)[0:100]:
     raw_mne.set_annotations(annotations)
     # Resample the data to 250 Hz
     raw_mne.resample(250)
+    raw_mne.notch_filter(freqs=60, picks='all', method='spectrum_fit')
     epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False)
     epoch_data = epochs_mne.get_data(copy=False)
-
+    epoch_data=epoch_data*1e6
     # Extract annotations from raw data
     annotations = raw_mne.annotations
 
     # Extract onset times of annotations and convert to sample indices
     sfreq = raw_mne.info['sfreq']
-
+    std_list=[]
     # Initialize artifact flag array with zeros
     n_epochs, n_channels, n_samples_per_epoch = epoch_data.shape
     artifact_flags = np.zeros((n_epochs, n_channels, n_samples_per_epoch), dtype=int)
@@ -126,6 +127,7 @@ for file_name in sorted(edf_files)[0:100]:
                 artifact_flags[epoch_idx, ch_idx, start_sample:end_sample] = 1
     mean=np.mean(epoch_data)
     std = np.std(epoch_data)
+    std_list.append(std)
     epoch_data = (epoch_data-mean) / std  # normalization for session
     del mean
     del std

@@ -61,6 +61,9 @@ def train_epoch(model, loss_function, optimizer, train_loader, train_config, log
     
         # Backward/Optimization pass
         batch_train_loss[0].backward()
+
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1) #1, 3, 5, 8, 10. 
+
         optimizer.step()
 
         # Accumulate the loss

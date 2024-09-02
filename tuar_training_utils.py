@@ -213,8 +213,17 @@ def create_raw_mne(
         scale = np.array([SCALE_FOR_MICROVOLTS if chtype == "eeg" else 1 for chtype in ch_types])
     else:
         scale = SCALE_FOR_MICROVOLTS
-
-    info.set_montage("standard_1020", match_alias=False, match_case=False, verbose=False)
+    #info.set_montage(montage, match_alias=False, match_case=False, verbose=False)
     data_ = scale * eeg if scale_microvolts else eeg
     return mne.io.RawArray(data_, info, verbose=False)
 
+def normalize_to_range(x, min_val=-100, max_val=100):
+    """
+    Normalizza un valore x dall'intervallo [min_val, max_val] all'intervallo [-1, 1].
+    
+    :param x: Il valore da normalizzare.
+    :param min_val: Il valore minimo dell'intervallo originale. (default -100)
+    :param max_val: Il valore massimo dell'intervallo originale. (default 100)
+    :return: Il valore normalizzato nell'intervallo [-1, 1].
+    """
+    return 2 * (x - min_val) / (max_val - min_val) - 1

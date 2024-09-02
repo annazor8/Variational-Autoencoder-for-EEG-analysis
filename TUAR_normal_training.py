@@ -17,7 +17,7 @@ from library.model import hvEEGNet
 from library.training import train_generic
 from library.config import config_training as ct
 from library.config import config_model as cm
-from tuar_training_utils import get_data_TUAR
+from tuar_training_utils import get_data_TUAR, normalize_to_range
 import os
 import mne
 import numpy as np
@@ -57,8 +57,8 @@ all_files = os.listdir(directory_path)
 edf_files = [file for file in all_files if file.endswith('.edf')]
 total_duration=0
 total_artifacts_duration=0
-start_index=0
-end_index=25
+start_index=181
+end_index=290
 # Process each EDF file
 if start_index == None:
     start_index=0
@@ -82,23 +82,40 @@ for file_name in sorted(edf_files)[start_index:end_index]:
     raw_mne.pick_channels(channels_to_set,
                             ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
     raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
+    raw_mne.notch_filter(freqs=60, picks='all', method='spectrum_fit')
+    epoch_data=epoch_data*1e6
     epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False, reject_by_annotation=False)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
     del raw_mne
     epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
     del epochs_mne
-    mean=np.mean(epoch_data)
+    """mean=np.mean(epoch_data)
     std = np.std(epoch_data)
     epoch_data = (epoch_data-mean) / std  # normalization for session
     del mean
-    del std
+    del std"""
+    epoch_data=normalize_to_range(epoch_data)
     epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
 # initialize a list containing all sessions
     all_sessions.append(epoch_data)
 
 dataset=np.concatenate(all_sessions)
+
+all_data=dataset.flatten()
+print(all_data.min())
+print(all_data.max())
+plt.figure(figsize=(12, 6))
+plt.hist(all_data, bins=300, color='blue', alpha=0.7)
+plt.title('Histogram of EEG Values Across All Files')
+plt.xlabel('EEG Value')
+plt.ylabel('Frequency')
+plt.yscale('log')
+plt.grid(True)
+plt.savefig("/home/azorzetto/dataset/hist3ZSCORE.png")
+plt.show()
+
 print(dataset.shape)
 
-print("complete dataset")
+"""print("complete dataset")
 Calculate_statistics(directory_path, start_index=0, end_index=10)
 
 test_size = int(np.ceil(0.2 * len(all_sessions)))
@@ -227,4 +244,4 @@ np.savez('reconstructed_eeg.npz', x_r_eeg=to_save_eeg)
 
 df_reconstuction_error = pd.DataFrame(av_reconstruction_error)
 
-df_reconstuction_error.to_csv('mean_reconstruction_errors.csv', index=False)
+df_reconstuction_error.to_csv('mean_reconstruction_errors.csv', index=False)"""
