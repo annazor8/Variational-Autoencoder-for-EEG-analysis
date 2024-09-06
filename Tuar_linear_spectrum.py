@@ -8,7 +8,7 @@ from scipy.signal import stft, welch
 from library.config import config_model as cm
 from library.model import hvEEGNet
 import torch 
-channel=['Fp1']
+channel='Fp1'
 dataset = np.load('/home/azorzetto/train8/dataset.npz')
 train_data = dataset['train_data']
 test_data= dataset['test_data']
@@ -34,6 +34,7 @@ for j in range(test_data.shape[0]):
     x_eeg=test_data[j,:,:,:]
     x_eeg = x_eeg.astype(np.float32)
     x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
+    model.eval()
     dataset_reconstructed.append(model.reconstruct(x_eeg))
 
 dataset_reconstructed=np.concatenate(dataset_reconstructed)
@@ -62,8 +63,9 @@ for i in range(dataset_reconstructed.shape[0]):
         #raw_reconstructed_test = mne.io.RawArray(np.squeeze(trial), info)
         #raw_reconstructed_test.notch_filter(freqs=60, picks='all', method='spectrum_fit')
         #test_data_2d_reconstructed=raw_reconstructed_test.get_data()
-        #f, spectrum_rec=welch(test_data_2d_reconstructed, fs = 250, nperseg = 256)
-        #power_reconstructed_array.append(spectrum_rec)
+        test_data_2d_reconstructed=np.squeeze(trial)
+        f, spectrum_rec=welch(test_data_2d_reconstructed, fs = 250, nperseg = 256)
+        power_reconstructed_array.append(spectrum_rec)
         #test_data_2d_reconstructed_arr.append(test_data_2d_reconstructed)
         test_data_2d_reconstructed_arr.append(np.squeeze(trial))
 
@@ -71,53 +73,54 @@ for i in range(dataset_reconstructed.shape[0]):
 average_original_spectrum=np.mean(power_original_array, axis=0)
 average_reconstructed_spectrum=np.mean(power_reconstructed_array, axis=0)
 
-index_ch=ch_names.index(channel[0])
+index_ch=ch_names.index(channel)
 
-"""fig_spectrum1=plt.figure(figsize=(10, 6))
+fig_spectrum1=plt.figure(figsize=(10, 6))
 plt.plot(f, average_original_spectrum[index_ch,:], color="black")
 plt.xlabel('Frequenza [Hz]')
 plt.ylabel('PSD')
-plt.title('mean PSD of the trials of the original signal- channel {}'.format(channel[0]))
-mpld3.save_html(fig_spectrum1, "/home/azorzetto/train8/PSD_no_notch_with_reconstruction/original_eeg_linear{}.html".format(channel[0])) 
-fig_spectrum1.savefig("/home/azorzetto/train8/PSD_no_notch_with_reconstruction/original_eeg_linear{}.png".format(channel[0]), format='png')
+plt.title('mean PSD of the trials of the original signal- channel {}'.format(channel))
+mpld3.save_html(fig_spectrum1, "/home/azorzetto/train8/Prova_con_model_eval()/PSD_no_notch_with_reconstruction/original_eeg_linear{}.html".format(channel)) 
+fig_spectrum1.savefig("/home/azorzetto/train8/Prova_con_model_eval()/PSD_no_notch_with_reconstruction/original_eeg_linear{}.png".format(channel), format='png')
 
 fig_spectrum2=plt.figure(figsize=(10, 6))
 plt.plot(f, average_reconstructed_spectrum[index_ch,:], color="red")
 plt.xlabel('Frequenza [Hz]')
 plt.ylabel('PSD')
-plt.title('mean PSD of the trials of the reconstructed signal- channel {}'.format(channel[0]))
-fig_spectrum2.savefig("/home/azorzetto/train8/PSD_no_notch_with_reconstruction/reconstructed_eeg_linear{}.png".format(channel[0]), format='png')
-mpld3.save_html(fig_spectrum2, "/home/azorzetto/train8/PSD_no_notch_with_reconstruction/reconstructed_eeg_linear{}.html".format(channel[0]))
-"""
+plt.title('mean PSD of the trials of the reconstructed signal- channel {}'.format(channel))
+plt.show
+fig_spectrum2.savefig("/home/azorzetto/train8/Prova_con_model_eval()/PSD_no_notch_with_reconstruction/reconstructed_eeg_linear{}.png".format(channel), format='png')
+mpld3.save_html(fig_spectrum2, "/home/azorzetto/train8/Prova_con_model_eval()/PSD_no_notch_with_reconstruction/reconstructed_eeg_linear{}.html".format(channel))
+
 
 first_channel_original = test_data_2d[index_ch, :] #18=Cz e 7=P4
 first_channel_reconstructed=np.concatenate(test_data_2d_reconstructed_arr, axis=1)[index_ch, :]
 # Plot the first channel
 plt.figure(figsize=(10, 4))
-plt.plot(first_channel_original, label=channel[0], linewidth=0.5, color='black')
+plt.plot(first_channel_original, label=channel, linewidth=0.5, color='black')
 plt.xlim((100980, 102020))
 plt.ylim((-2.5,2.5))
 plt.xlabel('Time Points')
 plt.ylabel('Amplitude')
-plt.title('Plot of the {} Channel'.format(channel[0]))
+plt.title('Plot of the {} Channel'.format(channel))
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("/home/azorzetto/train8/time_domain_rec_withOUT_notch/original_test_eeg_TIME_P4.png", format='png')
+plt.savefig("/home/azorzetto/train8/Prova_con_model_eval()/time_domain_rec_WITHOUT_notch/original_test_eeg_TIME_{}.png".format(channel), format='png')
 
 #first_channel_reconstructed=test_data_2d_reconstructed[index_ch, :]
 
 plt.figure(figsize=(10, 4))
-plt.plot(first_channel_reconstructed, label=channel[0],linewidth=0.5, color='red' )
+plt.plot(first_channel_reconstructed, label=channel,linewidth=0.5, color='red' )
 plt.xlim((100980, 102020))
 plt.ylim((-2.5,2.5))
 plt.xlabel('Time Points')
 plt.ylabel('Amplitude')
-plt.title('Plot of the  Reconstruscted signal without notch- {} Channel'.format(channel[0]))
+plt.title('Plot of the  Reconstructed signal WITH notch- {} Channel'.format(channel))
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
-plt.savefig("/home/azorzetto/train8/time_domain_rec_withOUT_notch/reconstructed_test_eeg_TIME_P4.png", format='png')
+plt.savefig("/home/azorzetto/train8/Prova_con_model_eval()/time_domain_rec_WITHOUT_notch/reconstructed_test_eeg_TIME_{}.png".format(channel), format='png')
 eeg_srate=250
 info = mne.create_info(ch_names=ch_names, sfreq=eeg_srate, ch_types='eeg')
 raw_original_test = mne.io.RawArray(test_data_2d, info)
