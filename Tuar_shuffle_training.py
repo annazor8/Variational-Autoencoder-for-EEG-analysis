@@ -18,7 +18,7 @@ from library.training.soft_dtw_cuda import SoftDTW
 import pickle
 
 np.random.seed(43)
-directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
+#directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
 #directory_path="/content"
 directory_path='/home/azorzetto/dataset/01_tcp_ar'
 #directory_path = '/home/lmonni/Documents/01_tcp_ar'
@@ -146,16 +146,18 @@ shuffle_indices = np.random.permutation(dataset.shape[0])
 dataset=dataset[shuffle_indices]
 dataset_artifact=dataset_artifact[shuffle_indices]
 
-#dataset=dataset[0:300]
-#dataset_artifact=dataset_artifact[0:300]
+dataset=dataset[0:300]
+dataset_artifact=dataset_artifact[0:300]
 scaled_dataset=[]
 
-for j in range(dataset.shape[0]):
+"""for j in range(dataset.shape[0]):
     X_min=np.min(dataset[j,:,:,:])
     X_max=np.max(dataset[j,:,:,:])
     x=dataset[j,:,:,:]
     scaled_dataset.append(200 * (x - X_min) / (X_max - X_min) - 100)
-scaled_dataset=np.concatenate(scaled_dataset)
+scaled_dataset=np.concatenate(scaled_dataset)"""
+
+
 perc_artifacts=dataset_artifact.sum()/dataset_artifact.size *100
 perc_clean= (dataset_artifact.size - dataset_artifact.sum())/dataset_artifact.size *100
 print(f"percentage artifactual dataset in the whole dataset: {perc_artifacts}")
@@ -180,8 +182,8 @@ train_data=dataset[2*test_size:]
 train_data_artifact=dataset_artifact[2*test_size:]
 perc_artifacts=train_data_artifact.sum()/train_data_artifact.size *100
 perc_clean= (train_data_artifact.size - train_data_artifact.sum())/train_data_artifact.size *100
-print(f"percentage artifactual dataset in the validation dataset: {perc_artifacts}")
-print(f"percentage clean dataset in the validation dataset: {perc_clean}")
+print(f"percentage artifactual dataset in the train dataset: {perc_artifacts}")
+print(f"percentage clean dataset in the train dataset: {perc_clean}")
 
 train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
 validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
@@ -202,7 +204,7 @@ del validation_data
 train_config = ct.get_config_hierarchical_vEEGNet_training()
 epochs = 200
 # path_to_save_model = 'model_weights_backup'
-path_to_save_model = 'model_weights_backup_shuffle_jrj2' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
+path_to_save_model = 'model_weights_backup_shuffle_jrj3' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
 os.makedirs(path_to_save_model, exist_ok=True)
 epoch_to_save_model = 5
 
@@ -210,7 +212,7 @@ epoch_to_save_model = 5
 train_config['epochs'] = epochs
 train_config['path_to_save_model'] = path_to_save_model
 train_config['epoch_to_save_model'] = epoch_to_save_model
-train_config['log_dir'] = './logs_shuffle_jrj2'
+train_config['log_dir'] = './logs_shuffle_jrj3'
 os.makedirs(train_config['log_dir'], exist_ok=True)
 train_config['early_stopping'] = False #if you want to activate the early stopping
 
