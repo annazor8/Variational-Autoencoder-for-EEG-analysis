@@ -13,7 +13,7 @@ import mpld3
 from library.config import config_model as cm
 from library.model import hvEEGNet
 
-train_session='Shuffle_jrj2'
+train_session='8'
 #load the test data
 data = np.load('/home/azorzetto/train{}/dataset.npz'.format(train_session))
 
@@ -24,7 +24,7 @@ new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2',
 #load the Reconstruction error with average_channels  and average_time_samples
 model_config = cm.get_config_hierarchical_vEEGNet(22, 1000)
 model = hvEEGNet.hvEEGNet_shallow(model_config)  # new model is instantiated for each iteration of the loop.
-model.load_state_dict(torch.load('/home/azorzetto/trainShuffle_jrj2/model_weights_backup_shuffle_jrj2/model_epoch84.pth', map_location= torch.device('cpu')))
+model.load_state_dict(torch.load('/home/azorzetto/train8/model_weights_backup8/model_epoch80.pth', map_location= torch.device('cpu')))
 train_data=train_data[50,:,:,:]
 train_data = train_data.astype(np.float32)
 train_data = torch.from_numpy(train_data)

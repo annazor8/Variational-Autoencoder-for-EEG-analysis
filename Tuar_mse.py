@@ -14,8 +14,12 @@ import mpld3
 from library.config import config_model as cm
 from library.model import hvEEGNet
 import torch.nn.functional as F
+import torch
+from torch.utils.tensorboard import SummaryWriter
 
-train_session='Shuffle_jrj'
+writer = SummaryWriter('runs/training_metrics')  # You can name the log directory as you wish
+
+train_session='8'
 #load the test data
 data = np.load('/home/azorzetto/train{}/dataset.npz'.format(train_session))
 
@@ -40,7 +44,7 @@ for i in range(80):
     #load the Reconstruction error with average_channels  and average_time_samples
     model_config = cm.get_config_hierarchical_vEEGNet(22, 1000)
     model = hvEEGNet.hvEEGNet_shallow(model_config)  # new model is instantiated for each iteration of the loop.
-    model.load_state_dict(torch.load('/home/azorzetto/trainShuffle_jrj/model_weights_backup_shuffle_jrj/model_epoch{}.pth'.format(i+1), map_location= torch.device('cpu')))
+    model.load_state_dict(torch.load('/home/azorzetto/train8/model_weights_backup8/model_epoch{}.pth'.format(i+1), map_location= torch.device('cpu')))
     train_mse_array=[]
     val_mse_array=[]
     test_mse_array=[]
@@ -51,48 +55,73 @@ for i in range(80):
     validation_divergence_array=[]
     test_divergence_array=[]
 
-    for i in range(train_data.shape[0]):
-        x_eeg=train_data[i,:,:,:]
+    for k in range(train_data.shape[0]):
+        x_eeg=train_data[k,:,:,:]
         x_eeg = x_eeg.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
         #train_data=torch.unsqueeze(train_data, 1)
         train_rec=model.reconstruct(x_eeg)
         train_mse_array.append(F.mse_loss(x_eeg, train_rec))
-        train_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))
-        train_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))
-        print(i)
+        """train_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))
+        train_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))"""
+    
+    final_train_mse=np.mean(train_mse_array)
+    final_train_sdtw=np.mean(train_sdtw_array)
+    final_train_divergence=np.mean(train_divergence_array)
+    final_train_mse_array.append(final_train_mse)
+    final_train_sdtw_array.append(final_train_sdtw)
+    final_train_divergence_array.append(final_train_divergence)
 
-    final_train_mse_array.append(np.mean(train_mse_array))
-    final_train_sdtw_array.append(np.mean(train_sdtw_array))
-    final_train_divergence_array.append(np.mean(train_divergence_array))
-
-    for i in range(validation_data.shape[0]):
-        x_eeg=validation_data[i,:,:,:]
+    for j in range(validation_data.shape[0]):
+        x_eeg=validation_data[j,:,:,:]
         x_eeg = x_eeg.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
         val_rec=model.reconstruct(x_eeg)
         val_mse_array.append(F.mse_loss(x_eeg, val_rec))
-        val_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, val_rec, average_channels=True, average_time_samples=True))
-        validation_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, val_rec, average_channels=True, average_time_samples=True))
-        print(i)
+        """val_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, val_rec, average_channels=True, average_time_samples=True))
+        validation_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, val_rec, average_channels=True, average_time_samples=True))"""
 
-    final_val_mse_array.append(np.mean(val_mse_array))
-    final_val_sdtw_array.append(np.mean(val_sdtw_array))
-    final_validation_divergence_array.append(np.mean(validation_divergence_array))
+    final_val_mse=np.mean(val_mse_array)
+    final_val_sdtw=np.mean(val_sdtw_array)
+    final_validation_divergence=np.mean(validation_divergence_array)
+    final_val_mse_array.append(final_val_mse)
+    final_val_sdtw_array.append(final_val_sdtw)
+    final_validation_divergence_array.append(final_validation_divergence)
 
-    for i in range(test_data.shape[0]):
-        x_eeg=test_data[i,:,:,:]
+    for w in range(test_data.shape[0]):
+        x_eeg=test_data[w,:,:,:]
         x_eeg = x_eeg.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
         test_rec=model.reconstruct(x_eeg)
         test_mse_array.append(F.mse_loss(x_eeg, test_rec))
-        test_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, test_rec, average_channels=True, average_time_samples=True))
-        test_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, test_rec, average_channels=True, average_time_samples=True))
-        print(i)
+        """test_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, test_rec, average_channels=True, average_time_samples=True))
+        test_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, test_rec, average_channels=True, average_time_samples=True))"""
 
-    final_test_mse_array.append(np.mean(test_mse_array))
-    final_test_sdtw_array.append(np.mean(test_sdtw_array))
-    final_test_divergence_array.append(np.mean(test_divergence_array))
+    final_test_mse=np.mean(test_mse_array)
+    final_test_sdtw=np.mean(test_sdtw_array)
+    final_test_divergence=np.mean(test_divergence_array)
+    final_test_mse_array.append(final_test_mse)
+    final_test_sdtw_array.append(final_test_sdtw)
+    final_test_divergence_array.append(final_test_divergence)
+    writer.add_scalars('MSE', {
+        'Train MSE': final_train_mse,
+        'Validation MSE': final_val_mse,
+        'Test MSE': final_test_mse
+    }, i)
+
+    writer.add_scalars('SDTW', {
+        'Train SDTW': final_train_sdtw,
+        'Validation SDTW': final_val_sdtw,
+        'Test SDTW': final_test_sdtw
+    }, i)
+    writer.add_scalars('divergence DTW', {
+        'Train divergence DTW': final_train_divergence,
+        'Validation SDTW': final_validation_divergence,
+        'Test SDTW': final_test_divergence
+    }, i)
+    print('end iteration {}'.format(i))
+
+writer.close()
 
 t_train = torch.linspace(0, len(final_train_mse_array) - 1, steps=len(final_train_mse_array)).numpy()  # Convert to NumPy array if needed
 t_val = torch.linspace(0, len(final_val_mse_array) - 1, steps=len(final_val_mse_array)).numpy()  # Convert to NumPy array if needed
