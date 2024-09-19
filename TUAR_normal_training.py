@@ -41,12 +41,13 @@ import pandas as pd
 from tuar_training_utils import reconstruction_metrics
 from torch.utils.data import DataLoader
 import pickle
+from scipy.stats import johnsonsu, norm, boxcox, yeojohnson
 
 np.random.seed(43)
     
-directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
+#directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
 #directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
-
+directory_path="/home/azorzetto/dataset/Dataset_controllato/"
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                        'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
@@ -57,8 +58,8 @@ all_files = os.listdir(directory_path)
 edf_files = [file for file in all_files if file.endswith('.edf')]
 total_duration=0
 total_artifacts_duration=0
-start_index=181
-end_index=290
+start_index=0
+end_index=None
 # Process each EDF file
 if start_index == None:
     start_index=0
@@ -78,29 +79,34 @@ for file_name in sorted(edf_files)[start_index:end_index]:
     else:
         subj_list.append(sub_id)
     raw_mne = mne.io.read_raw_edf(file_path,
-                                    preload=False)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
+                                    preload=True)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
     raw_mne.pick_channels(channels_to_set,
                             ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
     raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
     raw_mne.notch_filter(freqs=60, picks='all', method='spectrum_fit')
-    epoch_data=epoch_data*1e6
     epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False, reject_by_annotation=False)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
     del raw_mne
     epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
+    epoch_data=epoch_data*1e6
     del epochs_mne
-    """mean=np.mean(epoch_data)
+    mean=np.mean(epoch_data)
     std = np.std(epoch_data)
     epoch_data = (epoch_data-mean) / std  # normalization for session
     del mean
-    del std"""
+    del std
     epoch_data=normalize_to_range(epoch_data)
     epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
 # initialize a list containing all sessions
     all_sessions.append(epoch_data)
 
 dataset=np.concatenate(all_sessions)
-
 all_data=dataset.flatten()
+
+#params = johnsonsu.fit(all_data)
+#transformed_data = johnsonsu(*params).rvs(size=all_data.size)
+#transformed_data, fitted_lambda = yeojohnson(all_data)
+
+
 print(all_data.min())
 print(all_data.max())
 plt.figure(figsize=(12, 6))
@@ -110,10 +116,10 @@ plt.xlabel('EEG Value')
 plt.ylabel('Frequency')
 plt.yscale('log')
 plt.grid(True)
-plt.savefig("/home/azorzetto/dataset/hist3ZSCORE.png")
+plt.savefig("/home/azorzetto/dataset/prova1.png")
 plt.show()
 
-print(dataset.shape)
+#print(transformed_data.shape)
 
 """print("complete dataset")
 Calculate_statistics(directory_path, start_index=0, end_index=10)

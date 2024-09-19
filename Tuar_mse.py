@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 writer = SummaryWriter('runs/training_metrics')  # You can name the log directory as you wish
 
-train_session='8'
+train_session='Shuffle6'
 #load the test data
 data = np.load('/home/azorzetto/train{}/dataset.npz'.format(train_session))
 
@@ -40,11 +40,13 @@ final_train_divergence_array=[]
 final_validation_divergence_array=[]
 final_test_divergence_array=[]
 
-for i in range(80):
+for i in range(3, 80):
+    print(i)
     #load the Reconstruction error with average_channels  and average_time_samples
     model_config = cm.get_config_hierarchical_vEEGNet(22, 1000)
     model = hvEEGNet.hvEEGNet_shallow(model_config)  # new model is instantiated for each iteration of the loop.
-    model.load_state_dict(torch.load('/home/azorzetto/train8/model_weights_backup8/model_epoch{}.pth'.format(i+1), map_location= torch.device('cpu')))
+    model.load_state_dict(torch.load('/home/azorzetto/train{}/model_weights_backup_shuffle6/model_epoch{}.pth'.format(train_session, i+1), map_location= torch.device('cpu')))
+    model.eval()
     train_mse_array=[]
     val_mse_array=[]
     test_mse_array=[]
@@ -54,14 +56,25 @@ for i in range(80):
     train_divergence_array=[]
     validation_divergence_array=[]
     test_divergence_array=[]
+    """x_eeg=train_data[64,:,:,:]
+    x_eeg = x_eeg.astype(np.float32)
+    x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
+        #train_data=torch.unsqueeze(train_data, 1)
+    train_rec=model.reconstruct(x_eeg)"""
 
-    for k in range(train_data.shape[0]):
+    for k in range(64, train_data.shape[0]):
         x_eeg=train_data[k,:,:,:]
         x_eeg = x_eeg.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
         #train_data=torch.unsqueeze(train_data, 1)
         train_rec=model.reconstruct(x_eeg)
-        train_mse_array.append(F.mse_loss(x_eeg, train_rec))
+        if torch.isnan(train_rec).any():
+            print("reconstructed trial {} of the train set  is nan".format(k))
+            continue
+        elif torch.isinf(train_rec).any():
+            print("reconstructed trial {} of the train set is inf".format(k))
+        else:
+            train_mse_array.append(F.mse_loss(x_eeg, train_rec))
         """train_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))
         train_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))"""
     
@@ -77,7 +90,14 @@ for i in range(80):
         x_eeg = x_eeg.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
         val_rec=model.reconstruct(x_eeg)
-        val_mse_array.append(F.mse_loss(x_eeg, val_rec))
+        if torch.isnan(val_rec).any():
+            print("reconstructed trial {} of the validation set  is nan".format(j))
+            continue
+        elif torch.isinf(val_rec).any():
+            print("reconstructed trial {} of the validation set is inf".format(j))
+            continue
+        else:
+            val_mse_array.append(F.mse_loss(x_eeg, val_rec))
         """val_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, val_rec, average_channels=True, average_time_samples=True))
         validation_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, val_rec, average_channels=True, average_time_samples=True))"""
 
@@ -93,7 +113,14 @@ for i in range(80):
         x_eeg = x_eeg.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
         test_rec=model.reconstruct(x_eeg)
-        test_mse_array.append(F.mse_loss(x_eeg, test_rec))
+        if torch.isnan(test_rec).any():
+            print("reconstructed trial {} of the test set  is nan".format(w))
+            continue
+        elif torch.isinf(test_rec).any():
+            print("reconstructed trial {} of the test set is inf".format(w))
+            continue
+        else:
+            test_mse_array.append(F.mse_loss(x_eeg, test_rec))
         """test_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, test_rec, average_channels=True, average_time_samples=True))
         test_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, test_rec, average_channels=True, average_time_samples=True))"""
 

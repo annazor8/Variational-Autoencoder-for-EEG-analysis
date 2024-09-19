@@ -16,13 +16,16 @@ from torch.utils.data import DataLoader
 from library.training.loss_function import compute_dtw_loss_along_channels
 from library.training.soft_dtw_cuda import SoftDTW
 import pickle
+import matplotlib.pyplot as plt
 
 np.random.seed(43)
 #directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
 #directory_path="/content"
-directory_path='/home/azorzetto/dataset/01_tcp_ar'
+#directory_path='/home/azorzetto/dataset/01_tcp_ar'
 #directory_path = '/home/lmonni/Documents/01_tcp_ar'
-directory_path="/home/azorzetto/dataset/01_tcp_ar_jrj/"
+#directory_path="/home/azorzetto/data1/01_tcp_ar_jrj"
+#directory_path="/home/azorzetto/data1/Dataset_controllato"
+directory_path="/home/azorzetto/dataset/Dataset_controllato/"
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
@@ -45,7 +48,7 @@ session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict
 all_sessions=[]
 artifact_session=[]
 # Loop through each EDF file
-for file_name in sorted(edf_files)[0:100]:
+for file_name in sorted(edf_files):
     
     file_path_edf = os.path.join(directory_path, file_name)
 
@@ -98,7 +101,7 @@ for file_name in sorted(edf_files)[0:100]:
 
     # Extract onset times of annotations and convert to sample indices
     sfreq = raw_mne.info['sfreq']
-    std_list=[]
+
     # Initialize artifact flag array with zeros
     n_epochs, n_channels, n_samples_per_epoch = epoch_data.shape
     artifact_flags = np.zeros((n_epochs, n_channels, n_samples_per_epoch), dtype=int)
@@ -125,30 +128,53 @@ for file_name in sorted(edf_files)[0:100]:
                 
             if ch_idx >= 0:  # Ensure the channel exists in the raw data
                 artifact_flags[epoch_idx, ch_idx, start_sample:end_sample] = 1
-    mean=np.mean(epoch_data)
-    std = np.std(epoch_data)
-    std_list.append(std)
-    epoch_data = (epoch_data-mean) / std  # normalization for session
-    del mean
-    del std
-    epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
+
+    
+    # number of epochs for that signal x 1 x channels x time samples
     # initialize a list containing all sessions
     all_sessions.append(epoch_data)
     artifact_session.append(artifact_flags)
- 
+
+
+
 dataset=np.concatenate(all_sessions)
 dataset_artifact=np.concatenate(artifact_session)
 
+mean=np.mean(dataset)
+std = np.std(dataset)
+dataset = (dataset-mean) / std  # normalization for session
+del mean
+del std
+
+dataset = np.expand_dims(dataset, 1)
 dataset_artifact = np.expand_dims(dataset_artifact, 1)
 
 shuffle_indices = np.random.permutation(dataset.shape[0])
 
 dataset=dataset[shuffle_indices]
 dataset_artifact=dataset_artifact[shuffle_indices]
+"""new_dataset=[]
+new_dataset.append(dataset)
+new_dataset_artifact=[]
+new_dataset_artifact.append(dataset_artifact)
 
-dataset=dataset[0:300]
-dataset_artifact=dataset_artifact[0:300]
-scaled_dataset=[]
+for j in range(dataset_artifact.shape[0]):
+    single_trial=dataset_artifact[j:j+1, :, :, :]
+    if single_trial.sum()>0:
+        continue
+    else:
+        new_dataset.append(dataset[j:j+1, :, :, :])
+        new_dataset.append(dataset[j:j+1, :, :, :])
+        new_dataset.append(dataset[j:j+1, :, :, :])
+        new_dataset.append(dataset[j:j+1, :, :, :])
+        new_dataset.append(dataset[j:j+1, :, :, :])
+        new_dataset.append(dataset[j:j+1, :, :, :])
+        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
+        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
+        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
+        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
+        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
+        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])"""
 
 """for j in range(dataset.shape[0]):
     X_min=np.min(dataset[j,:,:,:])
@@ -156,7 +182,20 @@ scaled_dataset=[]
     x=dataset[j,:,:,:]
     scaled_dataset.append(200 * (x - X_min) / (X_max - X_min) - 100)
 scaled_dataset=np.concatenate(scaled_dataset)"""
+#new_dataset=np.concatenate(new_dataset)
+all_data=dataset.flatten()
+plt.figure(figsize=(12, 6))
+plt.hist(all_data, bins=300, color='blue', alpha=0.7)
+plt.title('Histogram of EEG Values Across All Files')
+plt.xlabel('EEG Value')
+plt.ylabel('Frequency')
+#plt.yscale('log')
+plt.grid(True)
+plt.savefig("/home/azorzetto/dataset/prova1.png")
+plt.show()
 
+dataset_artifact=np.concatenate(new_dataset_artifact)
+dataset=new_dataset
 
 perc_artifacts=dataset_artifact.sum()/dataset_artifact.size *100
 perc_clean= (dataset_artifact.size - dataset_artifact.sum())/dataset_artifact.size *100
