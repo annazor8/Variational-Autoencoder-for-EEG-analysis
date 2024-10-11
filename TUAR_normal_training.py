@@ -41,25 +41,28 @@ import pandas as pd
 from tuar_training_utils import reconstruction_metrics
 from torch.utils.data import DataLoader
 import pickle
-from scipy.stats import johnsonsu, norm, boxcox, yeojohnson
 
 np.random.seed(43)
     
-#directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
+directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
 #directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
-directory_path="/home/azorzetto/dataset/Dataset_controllato/"
+#directory_path="/home/azorzetto/data1/Dataset_controllato"
+
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                        'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
                        'EEG T1-REF', 'EEG T2-REF']
+split_mapping={'FP1': 'Fp1', 'FP2':'Fp2', 'F3':'F3', 'F4':'F4', 'C3':'C3', 'C4':'C4', 'P3':'P3', 'P4':'P4', 'O1':'O1', 'O2':'O2', 'F7':'F7', 'T3':'T3', 'T4':'T4', 'T5':'T5', 'T6':'T6',
+'A1':'A1', 'A2':'A2', 'FZ':'Fz', 'CZ':'Cz', 'PZ':'Pz', 'E1':'E1', 'E2':'E2'}
+new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
+'A1', 'A2', 'Fz', 'Cz', 'Pz', 'E1', 'E2']
     # List all files in the directory
 all_files = os.listdir(directory_path)
     # Filter out only EDF files
 edf_files = [file for file in all_files if file.endswith('.edf')]
-total_duration=0
-total_artifacts_duration=0
+
 start_index=0
-end_index=None
+end_index=10
 # Process each EDF file
 if start_index == None:
     start_index=0
@@ -67,83 +70,136 @@ if start_index == None:
 if end_index == None:
     end_index=len(edf_files) -1
 
-subj_list=[]
+#subj_list=[]
 all_sessions = []
+artifact_session=[]
+all_sessions_names=[]
 for file_name in sorted(edf_files)[start_index:end_index]:
     file_path = os.path.join(directory_path, file_name)
-    
+    all_sessions_names.append(file_name)
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
-    if sub_id in subj_list:
+    """if sub_id in subj_list:
         continue
-    else:
-        subj_list.append(sub_id)
+    else:"""
+        #subj_list.append(sub_id)
+
+    file_path_csv=file_name.split(".")[0]+".csv"
+    file_path_csv=os.path.join(directory_path, file_path_csv )
+    df_artifact=pd.read_csv(file_path_csv, skiprows=6)
+
+    ch_names = []
+
+    # Iterate over each channel name in the 'channel' column of df_artifact
+    for i, channel_name in enumerate(df_artifact['channel'].tolist()):
+        
+        # Split the channel name at the hyphen and take the first part
+        base_channel_name = channel_name.split('-')[0]
+        
+        # Attempt to map the base channel name using the reverted_mapping dictionary
+        # If the base_channel_name exists in the dictionary, use the mapped value
+        # Otherwise, use the original base_channel_name
+        mapped_channel_name = split_mapping.get(base_channel_name)
+        if mapped_channel_name==None: #if None it means that the channel is not contained in the list of interesting channels
+            df_artifact.drop(index=i,inplace=True)
+            continue
+        # Append the mapped channel name inside a list (to create a list of lists)
+        ch_names.append([mapped_channel_name])
+        df_artifact['channel'][i]=mapped_channel_name
+
+    df_artifact['duration_artifact'] = df_artifact.iloc[:, 2] - df_artifact.iloc[:, 1]
+    onset = (df_artifact.iloc[:, 1]).astype(float)
+    duration=(df_artifact['duration_artifact']).astype(float)   
+    description=df_artifact['label']
+
     raw_mne = mne.io.read_raw_edf(file_path,
                                     preload=True)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
     raw_mne.pick_channels(channels_to_set,
                             ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
-    raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
+    rename_mapping = dict(zip(channels_to_set, new_channel_names))
+    raw_mne.rename_channels(rename_mapping)
+
+
+    raw_mne.filter(l_freq=0.5, h_freq=50, verbose=True)
     raw_mne.notch_filter(freqs=60, picks='all', method='spectrum_fit')
+    raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
+ 
     epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False, reject_by_annotation=False)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
     del raw_mne
     epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
-    epoch_data=epoch_data*1e6
     del epochs_mne
+
+    # Extract onset times of annotations and convert to sample indices
+    sfreq = 250
+
+    # Initialize artifact flag array with zeros
+    n_epochs, n_channels, n_samples_per_epoch = epoch_data.shape
+    artifact_flags = np.zeros((n_epochs, n_channels, n_samples_per_epoch), dtype=int)
+
+    for index, row in df_artifact.iterrows():
+        onset_sample = int(np.round(row['start_time'] * sfreq).astype(int))
+        duration_seconds = row['duration_artifact']
+        duration_samples =int( np.round(duration_seconds * sfreq).astype(int))
+        affected_channels = row['channel']  # List or array of affected channel names
+
+        # Calculate epoch and position within the epoch for the annotation
+        epoch_idx = onset_sample // n_samples_per_epoch
+        within_epoch_idx = onset_sample % n_samples_per_epoch
+
+        if epoch_idx < n_epochs:
+            start_sample = int(within_epoch_idx)
+            end_sample = start_sample +  duration_samples # Use duration from the row
+
+            if start_sample < n_samples_per_epoch:
+                end_sample = min(end_sample, n_samples_per_epoch)
+                
+                # Update artifact_flags array only for the affected channels
+            ch_idx = new_channel_names.index(affected_channels)  # Find index of channel in raw data
+                
+            if ch_idx >= 0:  # Ensure the channel exists in the raw data
+                artifact_flags[epoch_idx, ch_idx, start_sample:end_sample] = 1
+
+    epoch_data=epoch_data*1e6
+
     mean=np.mean(epoch_data)
     std = np.std(epoch_data)
     epoch_data = (epoch_data-mean) / std  # normalization for session
     del mean
     del std
-    epoch_data=normalize_to_range(epoch_data)
+    #epoch_data=normalize_to_range(epoch_data)
     epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
 # initialize a list containing all sessions
     all_sessions.append(epoch_data)
+    artifact_session.append(artifact_flags)
 
-dataset=np.concatenate(all_sessions)
-all_data=dataset.flatten()
-
-#params = johnsonsu.fit(all_data)
-#transformed_data = johnsonsu(*params).rvs(size=all_data.size)
-#transformed_data, fitted_lambda = yeojohnson(all_data)
-
-
-print(all_data.min())
-print(all_data.max())
-plt.figure(figsize=(12, 6))
-plt.hist(all_data, bins=300, color='blue', alpha=0.7)
-plt.title('Histogram of EEG Values Across All Files')
-plt.xlabel('EEG Value')
-plt.ylabel('Frequency')
-plt.yscale('log')
-plt.grid(True)
-plt.savefig("/home/azorzetto/dataset/prova1.png")
-plt.show()
-
-#print(transformed_data.shape)
-
-"""print("complete dataset")
-Calculate_statistics(directory_path, start_index=0, end_index=10)
+print("complete dataset")
+#Calculate_statistics(directory_path, start_index=0, end_index=10)
 
 test_size = int(np.ceil(0.2 * len(all_sessions)))
 test_data = np.concatenate(all_sessions[0:test_size])
-
+test_data_artifact=np.concatenate(artifact_session[0:test_size])
+print(test_data.shape[0])
 
 print("test set")
-Calculate_statistics(directory_path, start_index=0, end_index=test_size)
+#Calculate_statistics(directory_path, start_index=0, end_index=test_size)
 validation_data = np.concatenate(all_sessions[test_size:2*test_size])
-
+validation_data_artifact=np.concatenate(artifact_session[test_size:2*test_size])
 
 print("validation set")
-Calculate_statistics(directory_path, start_index=test_size, end_index=2*test_size)
+#Calculate_statistics(directory_path, start_index=test_size, end_index=2*test_size)
 train_data=np.concatenate(all_sessions[2*test_size:])
+train_data_artifact=np.concatenate(artifact_session[2*test_size:])
 print("train set")
-Calculate_statistics(directory_path, start_index=2*test_size, end_index=None)
+#Calculate_statistics(directory_path, start_index=2*test_size, end_index=None)
 
 train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
 validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
 
 #save as npz for reproducibility
-np.savez_compressed('/home/azorzetto/train5/dataset.npz', test_data=test_data, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
+#np.savez_compressed('/home/azorzetto/train5/dataset.npz', test_data=test_data, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
+np.savez_compressed('/home/azorzetto/train12/dataset1.npz', test_data=test_data, test_data_artifact=test_data_artifact, validation_data=validation_data, validation_data_artifact= validation_data_artifact, 
+                    train_data=train_data, train_data_artifact= train_data_artifact, 
+                    train_label=train_label, validation_label=validation_label)
 
 train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
 validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
@@ -157,9 +213,9 @@ del train_data
 del validation_data
 
 train_config = ct.get_config_hierarchical_vEEGNet_training()
-epochs = 80
+epochs = 160
 # path_to_save_model = 'model_weights_backup'
-path_to_save_model = 'model_weights_backup7' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
+path_to_save_model = 'model_weights_backup13' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
 os.makedirs(path_to_save_model, exist_ok=True)
 epoch_to_save_model = 1
 
@@ -167,7 +223,7 @@ epoch_to_save_model = 1
 train_config['epochs'] = epochs
 train_config['path_to_save_model'] = path_to_save_model
 train_config['epoch_to_save_model'] = epoch_to_save_model
-train_config['log_dir'] = './logs7'
+train_config['log_dir'] = './logs13'
 os.makedirs(train_config['log_dir'], exist_ok=True)
 train_config['early_stopping'] = False #if you want to activate the early stopping
 
@@ -216,11 +272,11 @@ train_generic.train(model=model, loss_function=loss_function, optimizer=optimize
                                                                         model_artifact=None)
 
 
-results = [] #list containing the dictionaries
+"""results = [] #list containing the dictionaries
 av_reconstruction_error=[]
 i=0
 to_save_eeg=[]
-for i in range(test_data.shape[0]-1):
+for i in range(test_data.shape[0]):
 #for i in range(10):
     x_eeg_=test_data[i]
     x_eeg = x_eeg_.astype(np.float32)
@@ -240,7 +296,6 @@ for i in range(test_data.shape[0]-1):
     results.append(new_row)
     av_reconstruction_error.append(recon_error_avChannelsT_avTST.cpu().numpy())
     to_save_eeg.append(x_r_eeg.cpu().numpy())
-    i=i+1
 
 with open('resconstruction_error.pkl', 'wb') as file:
     pickle.dump(results, file)

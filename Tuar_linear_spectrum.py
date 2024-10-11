@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import mne
 import mpld3
 import matplotlib.pyplot as plt
@@ -9,7 +11,7 @@ import torch
 import os
 from Tuar_plot_histogram import hist_computation
 
-def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_srate : int, optuput_path_folder : str, notch_filter : bool, time_slots : list = [(100980, 102020)]):
+def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_srate : int, optuput_path_folder : str, notch_filter : bool = False, time_slots : list = [(100980, 102020)]):
     plt.switch_backend('TkAgg')
 
     #-------------------------------------------------------------------------------------------------------------
@@ -24,10 +26,9 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
         x_eeg = x_eeg.astype(np.float32)
         x_eeg = torch.from_numpy(x_eeg).unsqueeze(0)
         model.eval()
-        dataset_reconstructed.append(model.reconstruct(x_eeg))
+        dataset_reconstructed.append(model.reconstruct(x_eeg)) #ogni elemento è ([1, 1, 22, 1000])
 
-
-    dataset_reconstructed=np.concatenate(dataset_reconstructed)
+    dataset_reconstructed=np.concatenate(dataset_reconstructed) #trailsx1x22x1000
 
     #-------------------------------------------------------------------------------------------------------------
     #computation of the spectrum for the orginial trials and the reconstructed trials
@@ -59,7 +60,8 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
             if notch_filter==True: #If I want to apply a notch filter in the reconstructed signal
                 info = mne.create_info(ch_names=ch_names, sfreq=eeg_srate, ch_types='eeg')
                 raw_reconstructed_test = mne.io.RawArray(np.squeeze(trial), info) #I create a raw mne starting from the reconstructed values
-                raw_reconstructed_test.notch_filter(freqs=60, picks='all', method='spectrum_fit') #I apply a notch filter
+                raw_reconstructed_test.filter(l_freq=0, h_freq=50)
+                #raw_reconstructed_test.notch_filter(freqs=60, picks='all', method='spectrum_fit') #I apply a notch filter
                 test_data_2d_reconstructed=raw_reconstructed_test.get_data()
                 f, spectrum_rec=welch(test_data_2d_reconstructed, fs = 250, nperseg = 256)
                 power_reconstructed_array.append(spectrum_rec)
@@ -87,9 +89,10 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
                     average_original_spectrum[index_ch, :] - std_original_spectrum[index_ch, :], 
                     average_original_spectrum[index_ch, :] + std_original_spectrum[index_ch, :], 
                     color='black', alpha=0.2, label="±1 STD (Original)")
-        plt.xlabel('Frequenza [Hz]')
-        plt.ylabel('PSD [microvolt^2/Hz]')
-        plt.title('Mean spectrum TRIAL SPECIFIC of the original signal- channel {}'.format(channel))
+        plt.grid(True)
+        plt.xlabel('Frequenza [Hz]',fontweight='bold', fontsize=20)
+        plt.ylabel(r'PSD [$\mu$V$^2$/Hz]', fontweight='bold', fontsize=20)
+        plt.title('Mean spectrum TRIAL SPECIFIC of the original signal- channel {}'.format(channel),fontweight='bold', fontsize=20 )
         os.makedirs(optuput_path_folder+'/PSD_no_notch_with_reconstruction', exist_ok=True)
         output_path_html=optuput_path_folder + '/PSD_no_notch_with_reconstruction' + '/original_eeg_TRIAL_SPECIFIC_linear{}.html'.format(channel)
         output_path_png=optuput_path_folder + '/PSD_no_notch_with_reconstruction' + '/original_eeg_TRIAL_SPECIFIC_linear{}.png'.format(channel)
@@ -106,9 +109,10 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
                     average_reconstructed_spectrum[index_ch, :] - std_reconstructed_spectrum[index_ch, :], 
                     average_reconstructed_spectrum[index_ch, :] + std_reconstructed_spectrum[index_ch, :], 
                     color='red', alpha=0.2, label="±1 STD (Original)")
-        plt.xlabel('Frequency [Hz]')
-        plt.ylabel('PSD [microvolt^2/Hz]')
-        plt.title('Mean spectrum TRIAL SPECIFIC of the reconstructed signal- channel {}'.format(channel))
+        plt.grid(True)
+        plt.xlabel('Frequency [Hz]', fontweight='bold', fontsize=20)
+        plt.ylabel(r'PSD [$\mu$V$^2$/Hz]', fontweight='bold', fontsize=20)
+        plt.title('Mean spectrum TRIAL SPECIFIC of the reconstructed signal- channel {}'.format(channel), fontweight='bold', fontsize=20)
         output_path_html=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/reconstructed_eeg_TRIAL_SPECIFIC_linear{}.html'.format(channel)
         output_path_png=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/reconstructed_eeg_TRIAL_SPECIFIC_linear{}.png'.format(channel)
         fig_spectrum2.savefig(output_path_png, format='png')
@@ -125,9 +129,10 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
                     global_average_original_spectrum - global_std_original_spectrum, 
                     global_average_original_spectrum + global_std_original_spectrum, 
                     color='black', alpha=0.2, label="±1 STD (Original)")
-    plt.xlabel('Frequency [Hz]')
-    plt.ylabel('PSD [microvolt^2/Hz]')
-    plt.title('Mean spectrum GLOBAL of the reconstructed signal')
+    plt.grid(True)
+    plt.xlabel('Frequency [Hz]', fontweight='bold', fontsize=20)
+    plt.ylabel(r'PSD [$\mu$V$^2$/Hz]', fontweight='bold', fontsize=20)
+    plt.title('Mean spectrum GLOBAL of the reconstructed signal', fontweight='bold', fontsize=20)
     output_path_html=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/original_GLOBAL_eeg_linear.html'
     output_path_png=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/original_GLOBAL_eeg_linear.png'
     fig_spectrum3.savefig(output_path_png, format='png', dpi=300)
@@ -143,10 +148,11 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
     plt.fill_between(f, 
                     global_average_reconstructed_spectrum - global_std_reconstructed_spectrum, 
                     global_average_reconstructed_spectrum + global_std_reconstructed_spectrum, 
-                    color='black', alpha=0.2, label="±1 STD (Original)")
-    plt.xlabel('Frequency [Hz]')
-    plt.ylabel('PSD [microvolt^2/Hz]')
-    plt.title('Mean spectrum GLOBAL of the reconstructed signal')
+                    color='red', alpha=0.2, label="±1 STD (Original)")
+    plt.grid(True)
+    plt.xlabel('Frequency [Hz]', fontweight='bold', fontsize=20)
+    plt.ylabel(r'PSD [$\mu$V$^2$/Hz]', fontweight='bold', fontsize=20)
+    plt.title('Mean spectrum GLOBAL of the reconstructed signal', fontweight='bold', fontsize=20)
     output_path_html=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/reconstructed_GLOBAL_eeg_linear.html'
     output_path_png=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/reconstructed_GLOBAL_eeg_linear.png'
     fig_spectrum4.savefig(output_path_png, format='png', dpi=300)
@@ -154,21 +160,23 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
     plt.close()
     #-------------------------------------------------------------------------------------------------------------
     #plot the original trials concatenated in time domain 
-    n_rows = test_data_2d.shape[0]  # in each line I plot the EEG for a single channel
+    n_rows = 22  # in each line I plot the EEG for a single channel
     n_cols = 1  # only one column
-    n_plots = test_data_2d.shape[0]
+    n_plots = 22
 
     fig, ax = plt.subplots(n_rows, n_cols, figsize=(18, 10), sharey=True, sharex=True)
-    fig.suptitle('Original EEG', fontsize=20)
-    for i in range(n_plots):
+    fig.suptitle('Original EEG', fontsize=20, fontweight='bold')
+    for i in range(0, 22):
+        print(i)
         # Plot the first channel
         ax[i].plot(test_data_2d[i, :], label="{}".format(ch_names[i]), linewidth=0.5, color='black')
         ax[i].legend()
         ax[i].grid(True)
 
-    fig.text(0.04, 0.5, 'Amplitude', va='center', rotation='vertical')
-    fig.text(0.5, 0.04, 'Time Samples', ha='center', va='center', fontsize=14)
+    fig.text(0.04, 0.5, r"Amplitude [$\mu$V]", va='center', rotation='vertical', fontweight='bold', fontsize=20)
+    fig.text(0.5, 0.04, 'Time Samples [s]', ha='center', va='center', fontweight='bold', fontsize=20)
     plt.tight_layout(rect=[0.05, 0, 1, 0.95])
+    plt.subplots_adjust(bottom=0.1) 
 
     os.makedirs(optuput_path_folder+'/time_domain_rec_WITHOUT_notch', exist_ok=True)
     png_path=optuput_path_folder+'/time_domain_rec_WITHOUT_notch'+'/original_test_eeg_TIME.png'
@@ -186,7 +194,7 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
         indx_3=ch_names.index(ch_to_plot[2])
         indx_channels=[indx_1, indx_2, indx_3]
         fig, ax = plt.subplots(n_rows, n_cols, figsize=(20, 12), sharey=True, sharex=True)
-        fig.suptitle('Original EEG zoomed window', fontsize=20)
+        fig.suptitle('Original EEG zoomed window', fontweight='bold', fontsize=20)
         for i in range(n_plots):
             # Plot the first channel
             ax[i].plot(test_data_2d[indx_channels[i], :], label="{}".format(ch_to_plot[i]), linewidth=0.5, color='black')
@@ -195,9 +203,10 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
             ax[i].set_xlim(time_slots[j])
             ax[i].set_ylim((-2.5, 2.5))
     
-        fig.text(0.04, 0.5, 'Amplitude', va='center', rotation='vertical')
-        fig.text(0.5, 0.04, 'Time Samples', ha='center', va='center', fontsize=14)
+        fig.text(0.04, 0.5, r"Amplitude [$\mu$V]", va='center', rotation='vertical',fontweight='bold', fontsize=20 )
+        fig.text(0.5, 0.04, 'Time Samples [s]', ha='center', va='center', fontweight='bold', fontsize=20)
         plt.tight_layout(rect=[0.05, 0, 1, 0.95])
+        plt.subplots_adjust(bottom=0.1) 
         os.makedirs(optuput_path_folder+'/time_domain_rec_WITHOUT_notch_zoom', exist_ok=True)
         png_path=optuput_path_folder+'/time_domain_rec_WITHOUT_notch_zoom'+'/original_test_eeg_TIME_{}.png'.format(j)
         plt.savefig(png_path, format='png', dpi=300)
@@ -211,16 +220,17 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
 
     #reconstructed_signal=np.concatenate(test_data_2d_reconstructed_arr, axis=1) #C x T
     fig, ax = plt.subplots(n_rows, n_cols, figsize=(20, 12), sharey=True, sharex=True)
-    fig.suptitle('Reconstructed EEG', fontsize=20)
+    fig.suptitle('Reconstructed EEG', fontweight='bold', fontsize=20)
     for i in range(n_plots):
         # Plot the first channel
         ax[i].plot(dataset_reconstructed[i, :], label="{}".format(ch_names[i]), linewidth=0.5, color='red')
         ax[i].legend()
         ax[i].grid(True)
 
-    fig.text(0.04, 0.5, 'Amplitude', va='center', rotation='vertical')
-    fig.text(0.5, 0.04, 'Time Samples', ha='center', va='center', fontsize=14)
+    fig.text(0.04, 0.5, r"Amplitude [$\mu$V]", va='center', rotation='vertical', fontweight='bold', fontsize=20)
+    fig.text(0.5, 0.04, 'Time Samples [s]', ha='center', va='center', fontweight='bold', fontsize=20)
     plt.tight_layout(rect=[0.05, 0, 1, 0.95])
+    plt.subplots_adjust(bottom=0.1) 
     os.makedirs(optuput_path_folder+'/time_domain_rec_WITHOUT_notch', exist_ok=True)
     png_path=optuput_path_folder+'/time_domain_rec_WITHOUT_notch'+'/reconstructed_test_eeg_TIME.png'
     plt.savefig(png_path, format='png', dpi=300)
@@ -240,7 +250,7 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
         indx_channels=[indx_1, indx_2, indx_3]
 
         fig, ax = plt.subplots(n_rows, n_cols, figsize=(20, 12), sharey=True, sharex=True)
-        fig.suptitle('Reconstructed EEG zoomed window', fontsize=20)
+        fig.suptitle('Reconstructed EEG zoomed window', fontweight='bold', fontsize=20)
         for i in range(n_plots):
             # Plot the first channel
             ax[i].plot(dataset_reconstructed[indx_channels[i], :], label="{}".format(ch_to_plot[i]), linewidth=0.5, color='red')
@@ -249,34 +259,37 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
             ax[i].set_xlim(time_slots[j])
             ax[i].set_ylim((-2.5, 2.5))
 
-        fig.text(0.04, 0.5, 'Amplitude', va='center', rotation='vertical', fontsize=14)
-        fig.text(0.5, 0.04, 'Time Samples', ha='center', va='center', fontsize=14)
+        fig.text(0.04, 0.5, r"Amplitude [$\mu$V]", va='center', rotation='vertical', fontweight='bold', fontsize=20)
+        fig.text(0.5, 0.04, 'Time Samples [s]', ha='center', va='center', fontweight='bold', fontsize=20)
         plt.tight_layout(rect=[0.05, 0, 1, 0.95])
+        plt.subplots_adjust(bottom=0.1) 
         os.makedirs(optuput_path_folder+'/time_domain_rec_WITHOUT_notch_zoom', exist_ok=True)
         png_path=optuput_path_folder+'/time_domain_rec_WITHOUT_notch_zoom'+'/reconstructed_test_eeg_TIME_{}.png'.format(j)
         plt.savefig(png_path, format='png', dpi=300)
         plt.close()
 
-train_shuffle_session='_jrj2'
-train_session="Shuffle{}".format(train_shuffle_session)
+#train_shuffle_session='_jrj2'
+#train_session="Shuffle{}".format(train_shuffle_session)
 
-#train_session=10
+train_session=12
 dataset=np.load("/home/azorzetto/train{}/dataset.npz".format(train_session))
 train_data = dataset['train_data']
 test_data= dataset['test_data']
-ch_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
+
+channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
 'A1', 'A2', 'Fz', 'Cz', 'Pz', 'T1', 'T2']
 
-model_epoch=85
-path_to_model="/home/azorzetto/train{}/model_weights_backup_shuffle{}/model_epoch{}.pth".format(train_session, train_shuffle_session, model_epoch)
+new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6',
+    'A2', 'Fz', 'Cz', 'Pz', 'T1', 'T2']
+
+model_epoch=94
+path_to_model="/home/azorzetto/train{}/model_weights_backup{}/model_epoch{}.pth".format(train_session, train_session, model_epoch)
 
 #path_to_model='/home/azorzetto/train{}/model_weights_backup{}/model_epoch{}.pth'.format(train_session,train_session, model_epoch)
 
 #TO INSERT THE SHUFFLE NUMBER IN THE SECOND PARAMETER if using shuffle
 #path_to_model='/home/azorzetto/train{}/model_weights_backup_shuffle{}/model_epoch{}.pth'.format(train_session, 4, model_epoch)
 eeg_srate=250
-output_path_folder="/home/azorzetto/train{}".format(train_session)
+output_path_folder="/home/azorzetto/train{}/PSD_TRAIN_TRIAL".format(train_session)
 
-plot_average_test_PSD(ch_names=ch_names, test_data=test_data, path_to_model=path_to_model, eeg_srate=eeg_srate, optuput_path_folder= output_path_folder, notch_filter=False, time_slots=[(100980, 102020), (500, 1550), (13000, 14000)])
-
-hist_computation(train_session= train_session, bins=150)
+plot_average_test_PSD(ch_names=new_channel_names, test_data=train_data, path_to_model=path_to_model, eeg_srate=eeg_srate, optuput_path_folder= output_path_folder, notch_filter=False, time_slots=[(100980, 102020), (500, 1550), (13000, 14000)])

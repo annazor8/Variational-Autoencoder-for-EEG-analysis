@@ -1,6 +1,8 @@
 
 from collections import defaultdict
 import torch
+import matplotlib
+matplotlib.use('TkAgg')
 from typing import Dict, List, Tuple
 from library.dataset import dataset_time as ds_time
 from library.model import hvEEGNet
@@ -21,22 +23,23 @@ import matplotlib.pyplot as plt
 np.random.seed(43)
 #directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
 #directory_path="/content"
-#directory_path='/home/azorzetto/dataset/01_tcp_ar'
+directory_path='/home/azorzetto/dataset/01_tcp_ar'
 #directory_path = '/home/lmonni/Documents/01_tcp_ar'
 #directory_path="/home/azorzetto/data1/01_tcp_ar_jrj"
 #directory_path="/home/azorzetto/data1/Dataset_controllato"
-directory_path="/home/azorzetto/dataset/Dataset_controllato/"
+#directory_path="/home/azorzetto/dataset/Dataset_controllato/"
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                        'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
                        'EEG T1-REF', 'EEG T2-REF']
 
+#ho sostituito t1 e t2 con E1 e E2
 new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
 'A1', 'A2', 'Fz', 'Cz', 'Pz', 'E1', 'E2']
 
-split_mapping={'FP1': 'Fp1', 'FP2':'Fp2', 'F3':'F3', 'F4':'F4', 'C3':'C3', 'C4':'C4', 'P3':'P3', 'P4':'P4', 'O1':'O1', 'O2':'O2', 'F7':'F7', 'T3':'T3', 'T4':'T4', 'T5':'T5', 'T6':'T6',
-'A1':'A1', 'A2':'A2', 'FZ':'Fz', 'CZ':'Cz', 'PZ':'Pz', 'E1':'E1', 'E2':'E2'}
+split_mapping={'FP1': 'Fp1', 'FP2':'Fp2', 'F3':'F3', 'F4':'F4', 'C3':'C3', 'C4':'C4', 'P3':'P3', 'P4':'P4', 'O1':'O1', 'O2':'O2', 'F7':'F7', 'T3':'T3', 
+               'T4':'T4', 'T5':'T5', 'T6':'T6', 'A1':'A1', 'A2':'A2', 'FZ':'Fz', 'CZ':'Cz', 'PZ':'Pz', 'E1':'E1', 'E2':'E2'}
 
 # List all files in the directory
 all_files = os.listdir(directory_path)
@@ -48,7 +51,7 @@ session_data: Dict[str, Dict[str, np.ndarray]] = defaultdict(lambda: defaultdict
 all_sessions=[]
 artifact_session=[]
 # Loop through each EDF file
-for file_name in sorted(edf_files):
+for file_name in sorted(edf_files)[5:20]:
     
     file_path_edf = os.path.join(directory_path, file_name)
 
@@ -96,6 +99,11 @@ for file_name in sorted(edf_files):
     epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False)
     epoch_data = epochs_mne.get_data(copy=False)
     epoch_data=epoch_data*1e6
+    mean=np.mean(epoch_data)
+    std = np.std(epoch_data)
+    epoch_data = (epoch_data-mean) / std  # normalization for session
+    del mean
+    del std
     # Extract annotations from raw data
     annotations = raw_mne.annotations
 
@@ -139,63 +147,27 @@ for file_name in sorted(edf_files):
 
 dataset=np.concatenate(all_sessions)
 dataset_artifact=np.concatenate(artifact_session)
+#per tenere solo i trials senza artefatti-----------------------
+valid_trials = []
 
-mean=np.mean(dataset)
-std = np.std(dataset)
-dataset = (dataset-mean) / std  # normalization for session
-del mean
-del std
+# Itera sui trial
+for trial in range(dataset.shape[0]):  # trial va da 0 al numero di trial
+    # Somma degli elementi nel trial di dataset_artifact
+    if dataset_artifact[trial].sum() < 1:
+        valid_trials.append(trial)
+
+# Filtra dataset e dataset_artifact mantenendo solo i trial validi
+dataset = dataset[valid_trials]
+dataset_artifact = dataset_artifact[valid_trials]
+#¯-------------------------------------------
 
 dataset = np.expand_dims(dataset, 1)
 dataset_artifact = np.expand_dims(dataset_artifact, 1)
 
-shuffle_indices = np.random.permutation(dataset.shape[0])
+#shuffle_indices = np.random.permutation(dataset.shape[0])
 
-dataset=dataset[shuffle_indices]
-dataset_artifact=dataset_artifact[shuffle_indices]
-"""new_dataset=[]
-new_dataset.append(dataset)
-new_dataset_artifact=[]
-new_dataset_artifact.append(dataset_artifact)
-
-for j in range(dataset_artifact.shape[0]):
-    single_trial=dataset_artifact[j:j+1, :, :, :]
-    if single_trial.sum()>0:
-        continue
-    else:
-        new_dataset.append(dataset[j:j+1, :, :, :])
-        new_dataset.append(dataset[j:j+1, :, :, :])
-        new_dataset.append(dataset[j:j+1, :, :, :])
-        new_dataset.append(dataset[j:j+1, :, :, :])
-        new_dataset.append(dataset[j:j+1, :, :, :])
-        new_dataset.append(dataset[j:j+1, :, :, :])
-        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
-        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
-        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
-        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
-        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])
-        new_dataset_artifact.append(dataset_artifact[j:j+1, :, :, :])"""
-
-"""for j in range(dataset.shape[0]):
-    X_min=np.min(dataset[j,:,:,:])
-    X_max=np.max(dataset[j,:,:,:])
-    x=dataset[j,:,:,:]
-    scaled_dataset.append(200 * (x - X_min) / (X_max - X_min) - 100)
-scaled_dataset=np.concatenate(scaled_dataset)"""
-#new_dataset=np.concatenate(new_dataset)
-all_data=dataset.flatten()
-plt.figure(figsize=(12, 6))
-plt.hist(all_data, bins=300, color='blue', alpha=0.7)
-plt.title('Histogram of EEG Values Across All Files')
-plt.xlabel('EEG Value')
-plt.ylabel('Frequency')
-#plt.yscale('log')
-plt.grid(True)
-plt.savefig("/home/azorzetto/dataset/prova1.png")
-plt.show()
-
-dataset_artifact=np.concatenate(new_dataset_artifact)
-dataset=new_dataset
+#dataset=dataset[shuffle_indices]
+#dataset_artifact=dataset_artifact[shuffle_indices]
 
 perc_artifacts=dataset_artifact.sum()/dataset_artifact.size *100
 perc_clean= (dataset_artifact.size - dataset_artifact.sum())/dataset_artifact.size *100
@@ -227,7 +199,7 @@ print(f"percentage clean dataset in the train dataset: {perc_clean}")
 train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
 validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
 #save as npz for reproducibility
-np.savez_compressed('dataset.npz', test_data=test_data, validation_data=validation_data, train_data=train_data, train_label=train_label, validation_label=validation_label)
+np.savez_compressed('dataset.npz', test_data=test_data,test_data_arifact=test_data_arifact, validation_data=validation_data, validation_data_artifact= validation_data_artifact, train_data=train_data,train_data_artifact= train_data_artifact, train_label=train_label, validation_label=validation_label)
 
 train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
 validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
@@ -283,7 +255,7 @@ if train_config['use_scheduler']:
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=train_config['lr_decay_rate'])
 else:
     lr_scheduler = None
-
+print('-----------------------------STOP-------------------------------------------')
 # Move the model to training device (CPU/GPU)
 model.to(train_config['device'])
 print("-----------------------------------------to call the dataloader------------------------------------------")
