@@ -213,8 +213,33 @@ def create_raw_mne(
         scale = np.array([SCALE_FOR_MICROVOLTS if chtype == "eeg" else 1 for chtype in ch_types])
     else:
         scale = SCALE_FOR_MICROVOLTS
-
-    info.set_montage("standard_1020", match_alias=False, match_case=False, verbose=False)
+    #info.set_montage(montage, match_alias=False, match_case=False, verbose=False)
     data_ = scale * eeg if scale_microvolts else eeg
     return mne.io.RawArray(data_, info, verbose=False)
 
+def normalize_to_range(x, min_val=-100, max_val=100):
+    """
+    Normalizza un valore x dall'intervallo [min_val, max_val] all'intervallo [-1, 1].
+    
+    :param x: Il valore da normalizzare.
+    :param min_val: Il valore minimo dell'intervallo originale. (default -100)
+    :param max_val: Il valore massimo dell'intervallo originale. (default 100)
+    :return: Il valore normalizzato nell'intervallo [-1, 1].
+    """
+    return 2 * (x - min_val) / (max_val - min_val) - 1
+
+def statistics_clean_eeg(x_eeg, x_artifactual):
+    """
+    calcola media e std usando solo i valori non artefattuali degli EEG
+    Args:
+        x_eeg: eeg session trials x channels x time samples 
+        x_artifactual: binary  3d array of the sami shape of x_eeg that has 0 if the corresponding vale cor that channel and tima sample is clean, 1 if it is artifactual 
+    Returns:
+        mean : the mean value computed only on the clean egg values 
+        std : the std value computed only on the clean egg values
+    """
+    clean_mask = (x_artifactual == 0)
+    clean_values = x_eeg[clean_mask]
+    mean=np.mean(clean_values)
+    std=np.std(clean_values)
+    return mean, std
