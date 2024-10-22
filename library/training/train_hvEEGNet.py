@@ -16,7 +16,6 @@ import pprint
 from ..config import config_model as cm
 from ..config import config_dataset as cd
 from ..config import config_training as ct
-    
 """
 %load_ext autoreload
 %autoreload 2
@@ -30,7 +29,6 @@ import sys
 def train_epoch(model, loss_function, optimizer, train_loader, train_config, log_dict = None):
     # Set the model in training mode
     model.train()
-
     # Variable to accumulate the loss
     train_loss = 0
     recon_loss = 0
@@ -62,7 +60,7 @@ def train_epoch(model, loss_function, optimizer, train_loader, train_config, log
         # Backward/Optimization pass
         batch_train_loss[0].backward()
 
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1) #1, 3, 5, 8, 10. 
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) #1, 3, 5, 8, 10. 
 
         optimizer.step()
 
@@ -88,7 +86,6 @@ def train_epoch(model, loss_function, optimizer, train_loader, train_config, log
         if train_config['use_classifier']:  log_dict['train_loss_clf'] = float(clf_loss)
         print("TRAIN LOSS")
         pprint.pprint(log_dict)
-    
     return train_loss
 
 

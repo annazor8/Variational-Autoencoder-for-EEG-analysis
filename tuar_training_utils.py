@@ -214,3 +214,19 @@ def normalize_to_range(x, min_val=-100, max_val=100, alpha=-1, beta=1):
         an array of the same shape of the input whose values are rescaled in the min-max range 
     """
     return (beta - alpha) * (x - min_val) / (max_val - min_val) + alpha
+
+def statistics_clean_eeg(x_eeg, x_artifactual):
+    """
+    calcola media e std usando solo i valori non artefattuali degli EEG
+    Args:
+        x_eeg: eeg session trials x channels x time samples 
+        x_artifactual: binary  3d array of the sami shape of x_eeg that has 0 if the corresponding vale cor that channel and tima sample is clean, 1 if it is artifactual 
+    Returns:
+        mean : the mean value computed only on the clean egg values 
+        std : the std value computed only on the clean egg values
+    """
+    clean_mask = (x_artifactual == 0)
+    clean_values = x_eeg[clean_mask]
+    mean=np.mean(clean_values)
+    std=np.std(clean_values)
+    return mean, std

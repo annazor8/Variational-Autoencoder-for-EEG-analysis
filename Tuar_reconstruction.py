@@ -22,8 +22,8 @@ test_data=dataset["test_data"]
 
 model_epoch=160
 
-#path_to_model="/home/azorzetto/data1/Train/train{}/model_weights_backup{}/model_epoch{}.pth".format(train_session, train_session, model_epoch)
-path_to_model="/home/azorzetto/train{}/model_weights_backup{}/model_epoch{}.pth".format(train_session, train_session, model_epoch)
+path_to_model="/home/azorzetto/data1/Train/train{}/model_weights_backup{}/model_epoch{}.pth".format(train_session, train_session, model_epoch)
+
 #-------------------------------------------------------------------------------------------------------------
     #reconstruction of the trials 
 model_config = cm.get_config_hierarchical_vEEGNet(22, 1000)
@@ -41,7 +41,7 @@ for j in range(test_data.shape[0]):
     x_eeg_test_reconstructed=model.reconstruct(x_eeg_test)
 
     test_reconstructed.append(x_eeg_test_reconstructed) #ogni elemento è ([1, 1, 22, 1000])
-    dtw_test=dtw_analysis.compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg_test, x_eeg_test_reconstructed,device=device, 
+    dtw_test=dtw_analysis.compute_recon_error_between_two_tensor(x_eeg_test, x_eeg_test_reconstructed,device=device, 
                                                                  average_channels=False, average_time_samples=True)
     E_test[:,j]=dtw_test.squeeze()
 
@@ -55,10 +55,10 @@ for t in range(train_data.shape[0]):
     x_eeg_train = torch.from_numpy(x_eeg_train).unsqueeze(0)
     x_eeg_train_reconstructed=model.reconstruct(x_eeg_train)
     train_reconstructed.append(x_eeg_train_reconstructed) #ogni elemento è ([1, 1, 22, 1000])
-    dtw_train=dtw_analysis.compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg_train, x_eeg_train_reconstructed,device=device, 
+    dtw_train=dtw_analysis.compute_recon_error_between_two_tensor(x_eeg_train, x_eeg_train_reconstructed,device=device, 
                                                                  average_channels=False, average_time_samples=True)
     E_train[:,t]=dtw_train.squeeze()
 
 train_reconstructed=np.concatenate(train_reconstructed) #trailsx1x22x1000
 
-np.savez_compressed(f'/home/azorzetto/train{train_session}/reconstructed_dataset_divergence.npz', E_train=E_train, E_test=E_test)
+np.savez_compressed('reconstructed_dataset.npz', E_train=E_train, E_test=E_test)
