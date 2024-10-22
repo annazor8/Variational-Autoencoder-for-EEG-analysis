@@ -217,16 +217,20 @@ def create_raw_mne(
     data_ = scale * eeg if scale_microvolts else eeg
     return mne.io.RawArray(data_, info, verbose=False)
 
-def normalize_to_range(x, min_val=-100, max_val=100):
+def normalize_to_range(x, min_val=-100, max_val=100, alpha=-1, beta=1):
     """
-    Normalizza un valore x dall'intervallo [min_val, max_val] all'intervallo [-1, 1].
-    
-    :param x: Il valore da normalizzare.
-    :param min_val: Il valore minimo dell'intervallo originale. (default -100)
-    :param max_val: Il valore massimo dell'intervallo originale. (default 100)
-    :return: Il valore normalizzato nell'intervallo [-1, 1].
+    Normalizza un valore x dall'intervallo [min_val, max_val] all'intervallo [-1, 1]
+
+    Args:
+        param x: Il valore da normalizzare.
+        param min_val: Il valore minimo dell'intervallo originale. (default -100)
+        param max_val: Il valore massimo dell'intervallo originale. (default 100)
+        return: Il valore normalizzato nell'intervallo [-1, 1]
+
+    Returns:
+        an array of the same shape of the input whose values are rescaled in the min-max range 
     """
-    return 2 * (x - min_val) / (max_val - min_val) - 1
+    return (beta - alpha) * (x - min_val) / (max_val - min_val) + alpha
 
 def statistics_clean_eeg(x_eeg, x_artifactual):
     """

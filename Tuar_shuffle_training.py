@@ -27,14 +27,14 @@ directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF','EEG F8-REF', 'EEG T3-REF', 'EEG T4-REF',
-                       'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
+                       'EEG T5-REF', 'EEG T6-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
                        'EEG T1-REF', 'EEG T2-REF']
 
 new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6',
-'A1', 'Fz', 'Cz', 'Pz', 'T1', 'T2']
+'A2', 'Fz', 'Cz', 'Pz', 'T1', 'T2']
 
 split_mapping={'FP1': 'Fp1', 'FP2':'Fp2', 'F3':'F3', 'F4':'F4', 'C3':'C3', 'C4':'C4', 'P3':'P3', 'P4':'P4', 'O1':'O1', 'O2':'O2', 'F7':'F7', 'F8':'F8','T3':'T3', 'T4':'T4', 'T5':'T5', 'T6':'T6',
-'A1':'A1', 'FZ':'Fz', 'CZ':'Cz', 'PZ':'Pz', 'T1':'T1', 'T2':'T2'}
+'A2':'A2', 'FZ':'Fz', 'CZ':'Cz', 'PZ':'Pz', 'T1':'T1', 'T2':'T2'}
 
 # List all files in the directory
 all_files = os.listdir(directory_path)
@@ -43,7 +43,7 @@ edf_files = [file for file in all_files if file.endswith('.edf')]
 
 all_sessions=[]
 artifact_session=[]
-
+session_names=[]
 # Loop through each EDF file
 for file_name in sorted(edf_files)[5:20]:
     
@@ -133,26 +133,36 @@ for file_name in sorted(edf_files)[5:20]:
     del std
     # initialize a list containing all sessions
     #n_dataset= normalize_to_range(epoch_data, epoch_data.min(), epoch_data.max())
-    #all_sessions.append(epoch_data)
+    for _ in range(len(epoch_data)):
+        session_names.append(file_name)
+
     all_sessions.append(epoch_data)
     artifact_session.append(artifact_flags)
  
-dataset=np.concatenate(all_sessions)
-dataset_artifact=np.concatenate(artifact_session)
+
 
 #per tenere solo i trials senza artefatti-----------------------
 valid_trials = []
-
+valid_trials_number=[]
+valid_trials_session_names=[]
+valid_trials_artifact_session=[]
+edf_numb=5
 # Itera sui trial
-for trial in range(dataset.shape[0]):  # trial va da 0 al numero di trial
-    # Somma degli elementi nel trial di dataset_artifact
-    if dataset_artifact[trial].sum() < 1:
-        valid_trials.append(trial)
-
+for dataset, artifact_flags in zip(all_sessions, artifact_session) :
+    for indx in range(0, dataset.shape[0]):  # trial va da 0 al numero di trial
+        # Somma degli elementi nel trial di dataset_artifact
+        if artifact_flags[indx].sum() < 1:
+            valid_trials.append(np.expand_dims(dataset[indx],0))
+            valid_trials_number.append(indx)
+            valid_trials_session_names.append(sorted(edf_files)[edf_numb])
+            valid_trials_artifact_session.append(np.expand_dims(artifact_flags[indx],0))
+    edf_numb=edf_numb+1
+dataset=np.concatenate(valid_trials)
+dataset_artifact=np.concatenate(valid_trials_artifact_session)
 # Filtra dataset e dataset_artifact mantenendo solo i trial validi
-dataset = dataset[valid_trials]
-dataset_artifact = dataset_artifact[valid_trials]
-#¯-------------------------------------------
+#dataset = dataset[valid_trials]
+#dataset_artifact = dataset_artifact[valid_trials]
+#--------------------------------------------
 
 """shuffle_indices = np.random.permutation(dataset.shape[0])
 dataset=dataset[shuffle_indices]
@@ -168,9 +178,9 @@ print(f"percentage clean dataset in the whole dataset: {perc_clean}")
 
 test_size = int(np.ceil(0.2 * dataset.shape[0]))
 test_data = dataset[0:test_size]
-test_data_arifact=dataset_artifact[0:test_size]
-perc_artifacts=test_data_arifact.sum()/test_data_arifact.size *100
-perc_clean= (test_data_arifact.size - test_data_arifact.sum())/test_data_arifact.size *100
+test_data_artifact=dataset_artifact[0:test_size]
+perc_artifacts=test_data_artifact.sum()/test_data_artifact.size *100
+perc_clean= (test_data_artifact.size - test_data_artifact.sum())/test_data_artifact.size *100
 print(f"percentage artifactual dataset in the test dataset: {perc_artifacts}")
 print(f"percentage clean dataset in the test dataset: {perc_clean}")
 
@@ -191,7 +201,9 @@ print(f"percentage clean dataset in the train dataset: {perc_clean}")
 train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
 validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
 #save as npz for reproducibility
-np.savez_compressed('dataset.npz', edf_files= sorted(edf_files)[5:20], test_data=test_data,test_data_arifact=test_data_arifact, validation_data=validation_data, validation_data_artifact= validation_data_artifact, train_data=train_data,train_data_artifact= train_data_artifact, train_label=train_label, validation_label=validation_label)
+np.savez_compressed('dataset1.npz', edf_files= sorted(edf_files)[5:20], test_data=test_data,test_data_artifact=test_data_artifact, validation_data=validation_data, validation_data_artifact= validation_data_artifact, 
+                    train_data=train_data,train_data_artifact= train_data_artifact, train_label=train_label, validation_label=validation_label, valid_trials_number=valid_trials_number, 
+                    valid_trials_session_names=valid_trials_session_names, valid_trials=valid_trials)
 
 train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
 validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
@@ -205,7 +217,7 @@ del train_data
 del validation_data
 
 train_config = ct.get_config_hierarchical_vEEGNet_training()
-epochs = 300
+epochs = 240
 # path_to_save_model = 'model_weights_backup'
 path_to_save_model = 'model_weights_backup_shuffle12' # the folder is model wights backup_iterationOfTheTuple and inside we have one file for each epoch
 os.makedirs(path_to_save_model, exist_ok=True)
