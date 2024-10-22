@@ -34,7 +34,8 @@ class hVAE(nn.Module):
         # Encoder 
         z, mu, log_var, encoder_cell_outputs = self.encoder(x)
         
-        # Decoder
+        # Decoder 
+        #--------------------STOP HERE-------------------
         decoder_output = self.decoder(z, h, encoder_cell_outputs)
         x_r, mu_list, log_var_list, delta_mu_list, delta_log_var_list = decoder_output
 
@@ -205,11 +206,9 @@ class hVAE_decoder(nn.Module):
             # Combine the z with the output of the decoder
             # In the deepest layer (i == 0) combine h with z. If h is not passed a vector of zeros is used instead
             # TODO check after training the use of identity for the i == 0 if h is not passed
-            x = self.features_combination_decoder[i](x, z)
-
+            x = self.features_combination_decoder[i](x, z) #con i =2
             # Pass the data through the decoder cell
             x = self.decoder[i](x)
-            
             # Sampling section
             # Note that in the last layer (i.e. the output I don't need to create a laten space and sampling from it... I'm only interested in the final results)
             if i != len(self.decoder) -1:

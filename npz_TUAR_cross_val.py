@@ -15,11 +15,13 @@ import pandas as pd
 from tuar_training_utils import reconstruction_metrics
 from torch.utils.data import DataLoader
 import gc
+import matplotlib as plt
+import matplotlib.pyplot as plt
 
 np.random.seed(43)
     
-#directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
-directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
+directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
+#directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
 
 #for storing the reconstruction values
 df_reconstruction = pd.DataFrame([], columns=[
@@ -44,7 +46,7 @@ all_session=[]
 # Process each EDF file
 
 
-for file_name in sorted(edf_files):
+for file_name in sorted(edf_files)[181:290]:
     file_path = os.path.join(directory_path, file_name)
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
@@ -87,7 +89,18 @@ list_dict_session = session_data.values()  # the type is dict_values, is a list 
 all_sessions= []  # initialize a list containing all sessions
 for el in list_dict_session:
     all_sessions.extend(list(el.values()))
-
+all_data=np.concatenate(all_sessions).flatten()
+print(all_data.min())
+print(all_data.max())
+plt.figure(figsize=(12, 6))
+plt.hist(all_data, bins=300, color='blue', alpha=0.7)
+plt.title('Histogram of EEG Values Across All Files')
+plt.xlabel('EEG Value')
+plt.ylabel('Frequency')
+plt.yscale('log')
+plt.grid(True)
+plt.savefig("/home/azorzetto/dataset/hist3ZSCORE.png")
+plt.show()
 test_size = int(np.ceil(0.2 * len(all_sessions)))
 test_data = all_sessions[0:test_size]
 train_val_data = all_sessions[test_size:]

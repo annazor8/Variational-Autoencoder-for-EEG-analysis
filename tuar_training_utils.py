@@ -12,6 +12,17 @@ from numpy.typing import NDArray
 from typing import Sequence, Union, List
 
 def reconstruction_metrics(x_eeg, x_r_eeg, device):
+    """
+    Returns four type of metrics of the dtw to measure the reconstruction signal: not average performed, averaged on time dimension, averaged on channel dimension, averaged on both dimensions
+
+    Args:
+        x_eeg: original eeg signal
+        x_r_eeg: corresponding reconstructed eeg signal 
+        device: device cpg/gpu 
+    
+    Returns: the four metrics
+    """
+
     recon_error_avChannelsF_avTSF = dtw_analysis.compute_recon_error_between_two_tensor(x_eeg, x_r_eeg, device,
                                                                                         average_channels=False,
                                                                                         average_time_samples=False)
@@ -109,7 +120,13 @@ def leave_one_session_out(session_data: Dict[str, Dict[str, np.ndarray]]):  # ->
     return combinations, np.concatenate(test_data)
 
 
-def leave_one_subject_out(session_data, number_of_trials : int =50):
+def leave_one_subject_out(session_data: Dict[str, Dict[str, np.ndarray]]):
+    """
+    Returns splits of sessions leaving one subject out in each fold
+    Return:
+        combinations: tuple list each one having two elements: train split and val split for each fold
+        test_data: list containing hold-out sessions, used for test
+    """
     # initialize an empty dictionary: Dict[str, Dict[str, NDArray]
     subject_data_dict: Dict[str, list] = defaultdict(lambda: list)
     for subj, value in session_data.items():  # key is the subj, value is a dictionary
@@ -131,11 +148,6 @@ def leave_one_subject_out(session_data, number_of_trials : int =50):
                 subject_data_dict[subjects[i]])) - 1)  # se ho più sessioni per quel soggetto ne scelgo una a caso
             el = list(subject_data_dict[subjects[i]])[j]
             test_data_complete.append(el)
-    test_data = []
-
-    """for el in test_data_complete:
-        i = random.randint(0, el.shape[0] - number_of_trials)
-        test_data.append(el[i:i + number_of_trials, :, :, :])"""
 
     train_val_data_complete = []
     for k in range(test_size, len(subjects)):
@@ -146,45 +158,16 @@ def leave_one_subject_out(session_data, number_of_trials : int =50):
             el = list(subject_data_dict[subjects[k]])[j]
             train_val_data_complete.append(el)
     train_val_data = train_val_data_complete #remove this line if I use the number of trials 
-    """train_val_data = []
-    for el in train_val_data_complete:
-        i = random.randint(0, el.shape[0] - number_of_trials)
-        train_val_data.append(el[i:i + number_of_trials, :, :, :])"""
     combinations: list = []
     for i in range(len(train_val_data)):
         train_data: list = train_val_data[:i] + train_val_data[i + 1:]
         val_data: np.ndarray = train_val_data[i]
         combinations.append((train_data, val_data))
-
     # Get training config
-    return combinations, test_data
+    return combinations, test_data_complete
 
-def plot_ORIGINAL_vs_RECONSTRUCTED(ch_to_plot : str, channels_to_set : list, x_eeg : np.ndarray, x_r_eeg : np.ndarray, trial : int = 3, T : int = 1000, name : str = "signal.png"):
-    t = torch.linspace(0, 4, T)
-    idx = channels_to_set.index(ch_to_plot)
-    # Plot the original and reconstructed signal
-    plt.rcParams.update({'font.size': 20})
-    fig, ax = plt.subplots(1, 1, figsize = (12, 8))
-
-    ax.plot(t, x_eeg.squeeze()[trial] [idx], label = 'Original EEG', color = 'red', linewidth = 2)
-    ax.plot(t, x_r_eeg.squeeze()[trial] [idx], label = 'Reconstructed EEG', color = 'green', linewidth = 1)
-
-    ax.legend()
-    ax.set_xlim([2, 4]) # Note that the original signal is 4s long. Here I plot only 2 second to have a better visualization
-    ax.set_xlabel('Time [s]')
-    ax.set_ylabel(r"Amplitude [$\mu$V]")
-    ax.set_title("Ch. {}".format(ch_to_plot))
-    ax.grid(True)
-
-    fig.tight_layout()
-    base_path = Path(__file__).resolve(strict=True).parent
-
-    print(base_path)
-    plt.savefig(base_path / name)
-    fig.show()
 
 SCALE_FOR_MICROVOLTS= 1e-6
-
 def create_raw_mne(
     eeg: NDArray,
     eeg_ch_list: Sequence[str],

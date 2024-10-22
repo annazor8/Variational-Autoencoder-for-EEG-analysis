@@ -1,6 +1,8 @@
 
 from collections import defaultdict
 import torch
+import matplotlib
+matplotlib.use('TkAgg')
 from typing import Dict, List, Tuple
 from library.dataset import dataset_time as ds_time
 from library.model import hvEEGNet
@@ -13,9 +15,6 @@ import numpy as np
 import pandas as pd
 from tuar_training_utils import leave_one_session_out, reconstruction_metrics, statistics_clean_eeg, normalize_to_range
 from torch.utils.data import DataLoader
-from library.training.loss_function import compute_dtw_loss_along_channels
-from library.training.soft_dtw_cuda import SoftDTW
-import matplotlib.pyplot as plt
 
 np.random.seed(43)
 directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
@@ -24,6 +23,7 @@ directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar'
 #directory_path = '/home/lmonni/Documents/01_tcp_ar'
 #directory_path="/home/azorzetto/data1/01_tcp_ar_jrj"
 #directory_path="/home/azorzetto/data1/Dataset_controllato"
+#directory_path="/home/azorzetto/dataset/Dataset_controllato/"
 
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF','EEG F8-REF', 'EEG T3-REF', 'EEG T4-REF',
@@ -138,38 +138,37 @@ for file_name in sorted(edf_files)[5:20]:
 
     all_sessions.append(epoch_data)
     artifact_session.append(artifact_flags)
- 
 
-
-#per tenere solo i trials senza artefatti-----------------------
-valid_trials = []
-valid_trials_number=[]
-valid_trials_session_names=[]
-valid_trials_artifact_session=[]
-edf_numb=5
-# Itera sui trial
-for dataset, artifact_flags in zip(all_sessions, artifact_session) :
-    for indx in range(0, dataset.shape[0]):  # trial va da 0 al numero di trial
-        # Somma degli elementi nel trial di dataset_artifact
-        if artifact_flags[indx].sum() < 1:
-            valid_trials.append(np.expand_dims(dataset[indx],0))
-            valid_trials_number.append(indx)
-            valid_trials_session_names.append(sorted(edf_files)[edf_numb])
-            valid_trials_artifact_session.append(np.expand_dims(artifact_flags[indx],0))
-    edf_numb=edf_numb+1
-dataset=np.concatenate(valid_trials)
-dataset_artifact=np.concatenate(valid_trials_artifact_session)
-# Filtra dataset e dataset_artifact mantenendo solo i trial validi
-#dataset = dataset[valid_trials]
-#dataset_artifact = dataset_artifact[valid_trials]
-#--------------------------------------------
-
+dataset=np.concatenate(all_sessions)
+dataset_artifact=np.concatenate(artifact_session)
 """shuffle_indices = np.random.permutation(dataset.shape[0])
 dataset=dataset[shuffle_indices]
 dataset_artifact=dataset_artifact[shuffle_indices]"""
 
 dataset = np.expand_dims(dataset, 1)
 dataset_artifact = np.expand_dims(dataset_artifact, 1)
+
+#per tenere solo i trials senza artefatti-----------------------
+"""valid_trials = []
+
+# Itera sui trial
+for trial in range(dataset.shape[0]):  # trial va da 0 al numero di trial
+    # Somma degli elementi nel trial di dataset_artifact
+    if dataset_artifact[trial].sum() < 1:
+        valid_trials.append(trial)
+
+# Filtra dataset e dataset_artifact mantenendo solo i trial validi
+dataset = dataset[valid_trials]
+dataset_artifact = dataset_artifact[valid_trials]"""
+#¯-------------------------------------------
+
+dataset = np.expand_dims(dataset, 1)
+dataset_artifact = np.expand_dims(dataset_artifact, 1)
+
+#shuffle_indices = np.random.permutation(dataset.shape[0])
+
+#dataset=dataset[shuffle_indices]
+#dataset_artifact=dataset_artifact[shuffle_indices]
 
 perc_artifacts=dataset_artifact.sum()/dataset_artifact.size *100
 perc_clean= (dataset_artifact.size - dataset_artifact.sum())/dataset_artifact.size *100
@@ -202,8 +201,7 @@ train_label: np.ndarray = np.random.randint(0, 4, train_data.shape[0])
 validation_label: np.ndarray = np.random.randint(0, 4, validation_data.shape[0])
 #save as npz for reproducibility
 np.savez_compressed('dataset1.npz', edf_files= sorted(edf_files)[5:20], test_data=test_data,test_data_artifact=test_data_artifact, validation_data=validation_data, validation_data_artifact= validation_data_artifact, 
-                    train_data=train_data,train_data_artifact= train_data_artifact, train_label=train_label, validation_label=validation_label, valid_trials_number=valid_trials_number, 
-                    valid_trials_session_names=valid_trials_session_names, valid_trials=valid_trials)
+                    train_data=train_data,train_data_artifact= train_data_artifact, train_label=train_label, validation_label=validation_label)
 
 train_dataset = ds_time.EEG_Dataset(train_data, train_label, channels_to_set)
 validation_dataset = ds_time.EEG_Dataset(validation_data, validation_label, channels_to_set)
@@ -259,7 +257,7 @@ if train_config['use_scheduler']:
     lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=train_config['lr_decay_rate'])
 else:
     lr_scheduler = None
-
+print('-----------------------------STOP-------------------------------------------')
 # Move the model to training device (CPU/GPU)
 model.to(train_config['device'])
 print("-----------------------------------------to call the dataloader------------------------------------------")

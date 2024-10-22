@@ -49,21 +49,16 @@ np.random.seed(43)
     
 #directory_path='/home/azorzetto/dataset/01_tcp_ar' #dataset in local PC
 #directory_path='/home/azorzetto/data1/01_tcp_ar/01_tcp_ar' #dataset in workstation
-directory_path='/home/azorzetto/data1/01_tcp_ar_WITHOUT_SEIZ'
 #directory_path="/home/azorzetto/data1/Dataset_controllato"
-
+directory_path="/home/azorzetto/data1/datset_no_SEIZ"
 channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF','EEG T3-REF', 'EEG T4-REF',
                        'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
                        'EEG T1-REF', 'EEG T2-REF']
-new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6', 'A1',
-'A2', 'Fz', 'Cz', 'Pz', 'T1', 'T2']
-
-split_mapping={'FP1': 'Fp1', 'FP2':'Fp2', 'F3':'F3', 'F4':'F4', 'C3':'C3', 'C4':'C4', 'P3':'P3', 'P4':'P4', 'O1':'O1', 'O2':'O2', 'F7':'F7', 'T3':'T3', 'T4':'T4', 'T5':'T5', 'T6':'T6','A1':'A1',
-'A2':'A2', 'FZ':'Fz', 'CZ':'Cz', 'PZ':'Pz', 'T1':'T1', 'T2':'T2'}
-
-sfreq=250
-
+split_mapping={'FP1': 'Fp1', 'FP2':'Fp2', 'F3':'F3', 'F4':'F4', 'C3':'C3', 'C4':'C4', 'P3':'P3', 'P4':'P4', 'O1':'O1', 'O2':'O2', 'F7':'F7', 'T3':'T3', 'T4':'T4', 'T5':'T5', 'T6':'T6',
+'A1':'A1', 'A2':'A2', 'FZ':'Fz', 'CZ':'Cz', 'PZ':'Pz', 'E1':'E1', 'E2':'E2'}
+new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6',
+'A1', 'A2', 'Fz', 'Cz', 'Pz', 'E1', 'E2']
     # List all files in the directory
 all_files = os.listdir(directory_path)
     # Filter out only EDF files
@@ -81,10 +76,10 @@ if end_index == None:
 #subj_list=[]
 all_sessions = []
 artifact_session=[]
-
+all_sessions_names=[]
 for file_name in sorted(edf_files)[start_index:end_index]:
     file_path = os.path.join(directory_path, file_name)
-    
+    all_sessions_names.append(file_name)
     sub_id, session, time = file_name.split(".")[0].split(
         "_")  # split the filname into subject, session and time frame
     """if sub_id in subj_list:
@@ -93,7 +88,7 @@ for file_name in sorted(edf_files)[start_index:end_index]:
         #subj_list.append(sub_id)
 
     file_path_csv=file_name.split(".")[0]+".csv"
-    file_path_csv=os.path.join(directory_path, file_path_csv)
+    file_path_csv=os.path.join(directory_path, file_path_csv )
     df_artifact=pd.read_csv(file_path_csv, skiprows=6)
 
     ch_names = []
@@ -109,7 +104,7 @@ for file_name in sorted(edf_files)[start_index:end_index]:
         # Otherwise, use the original base_channel_name
         mapped_channel_name = split_mapping.get(base_channel_name)
         if mapped_channel_name==None: #if None it means that the channel is not contained in the list of interesting channels
-            df_artifact.drop(index=i,inplace=True) #then it's dropped
+            df_artifact.drop(index=i,inplace=True)
             continue
         # Append the mapped channel name inside a list (to create a list of lists)
         ch_names.append([mapped_channel_name])
@@ -119,7 +114,7 @@ for file_name in sorted(edf_files)[start_index:end_index]:
     onset = (df_artifact.iloc[:, 1]).astype(float)
     duration=(df_artifact['duration_artifact']).astype(float)   
     description=df_artifact['label']
-    annotations = mne.Annotations(onset=onset, duration=duration,ch_names= ch_names, description=description)
+
 
     raw_mne = mne.io.read_raw_edf(file_path,
                                     preload=True)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
@@ -133,11 +128,27 @@ for file_name in sorted(edf_files)[start_index:end_index]:
 
     raw_mne.pick_channels(channels_to_set,
                             ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
+
+    raw_mne = mne.io.read_raw_edf(file_path,
+                                    preload=True)  # Load the EDF file: NB raw_mne.info['chs'] is the only full of information
+    raw_mne.pick_channels(channels_to_set,
+                            ordered=True)  # reorders the channels and drop the ones not contained in channels_to_set
+    rename_mapping = dict(zip(channels_to_set, new_channel_names))
+    raw_mne.rename_channels(rename_mapping)
+
+
+    raw_mne.filter(l_freq=0.5, h_freq=50, verbose=True)
+    raw_mne.notch_filter(freqs=60, picks='all', method='spectrum_fit')
+    raw_mne.resample(250)  # resample to standardize sampling frequency to 250 Hz
+ 
     epochs_mne = mne.make_fixed_length_epochs(raw_mne, duration=4, preload=False, reject_by_annotation=False)  # divide the signal into fixed lenght epoch of 4s with 1 second of overlapping: the overlapping starts from the left side of previous epoch
     del raw_mne
     epoch_data = epochs_mne.get_data(copy=False)  # trasform the raw eeg into a 3d np array
     del epochs_mne
     epoch_data=epoch_data*1e6
+
+    # Extract onset times of annotations and convert to sample indices
+    sfreq = 250
 
     # Initialize artifact flag array with zeros
     n_epochs, n_channels, n_samples_per_epoch = epoch_data.shape
@@ -166,14 +177,14 @@ for file_name in sorted(edf_files)[start_index:end_index]:
             if ch_idx >= 0:  # Ensure the channel exists in the raw data
                 artifact_flags[epoch_idx, ch_idx, start_sample:end_sample] = 1
 
-    #mean, std = statistics_clean_eeg(epoch_data, artifact_flags)
+    epoch_data=epoch_data*1e6
 
     """mean=np.mean(epoch_data)
     std = np.std(epoch_data)
     epoch_data = (epoch_data-mean) / std  # normalization for session
     del mean
-    del std"""
-
+    del std""" 
+    #epoch_data=normalize_to_range(epoch_data)
     epoch_data = np.expand_dims(epoch_data, 1)  # number of epochs for that signal x 1 x channels x time samples
     artifact_flags= np.expand_dims(artifact_flags, 1) 
 
