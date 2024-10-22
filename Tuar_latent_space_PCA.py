@@ -70,16 +70,17 @@ def plot_latent_space_interactive(latent_pca, artifact_perc, file_name:str, titl
         fig.show()
 
 #-----specify parameters 
-train_session=14
-model_epoch=64
+train_session=12
+model_epoch=94
 
 #-----load the dataset
-dataset=np.load("/home/azorzetto/train{}/datasetREAL.npz".format(train_session))
-dataset2=np.load("/home/azorzetto/train{}/dataset.npz".format(train_session))
-train= dataset['train_data']#(685, 1, 22, 1000)
-test = dataset['test_data']#(671, 1, 22, 1000)
-artifact_train=dataset2['train_data_artifact']
-artifact_test=dataset2['test_data_artifact']
+#dataset=np.load("/home/azorzetto/trainShuffle{}/datasetREAL.npz".format(train_session))
+dataset1=np.load("/home/azorzetto/train{}/dataset2.npz".format(train_session))
+dataset=np.load("/home/azorzetto/train{}/dataset.npz".format(train_session))
+train= dataset1['train_data']#(685, 1, 22, 1000)
+test = dataset1['test_data']#(671, 1, 22, 1000)
+artifact_train=dataset['train_data_artifact']
+artifact_test=dataset['test_data_artifact']
 
 #-------load the model
 model_name='hvEEGNet_shallow'
@@ -125,9 +126,9 @@ pca = PCA(n_components=2)
 train_latent_pca = pca.fit_transform(train_latent)# Addestra PCA sui dati e train_latent_pca ha dimensione 2, 685
 test_latent_pca = pca.transform(test_latent) #applica la trasformazione ai dati di test ed è (671, 2)
 
-array_perc_train=np.sum(artifact_train, axis=(1, 2))/22000
+array_perc_train=np.sum(artifact_train, axis=(1, 2, 3))/22000
 # Visualizza il latent space per il training
 plot_latent_space_interactive(train_latent_pca, array_perc_train, file_name = 'TRAIN', title="PCA Latent Space - Training Data", save_path="/home/azorzetto/train{}".format(train_session))
-array_perc_test=np.sum(artifact_test, axis=(1, 2))/22000
+array_perc_test=np.sum(artifact_test, axis=(1, 2, 3))/22000
 # Visualizza il latent space per il test
 plot_latent_space_interactive(test_latent_pca, array_perc_test, file_name = 'TEST', title="PCA Latent Space - Test Data", save_path="/home/azorzetto/train{}".format(train_session))

@@ -5,16 +5,17 @@ from library.model import hvEEGNet
 import torch
 import os
 
-def hist_computation(train_session, bins):
+def hist_computation(path_to_dataset, bins, path_to_save_hist):
     """
         compute the histogram of the original values contained in the whole dataset and saves it in train{train_session} folder
 
         Args:
-            train_session: the number of the session taken into consideration
+            path_to_dataset: the path to the datset
             bins: the number of bins of the histogram 
+            path_to_save_hist: the path to save the figure
     """
     
-    all_data=np.load('/home/azorzetto/train{}/dataset.npz'.format(train_session))
+    all_data=np.load(path_to_dataset)
 
     train_data=all_data['train_data']
     validation_data=all_data['validation_data']
@@ -24,34 +25,36 @@ def hist_computation(train_session, bins):
     all_data=all_data.flatten()
 
     plt.figure(figsize=(12, 6))
-    plt.hist(all_data, bins=bins,range=(-200, 200), color='blue',density=True, alpha=0.7)
-    plt.title(f'Histogram of EEG Values Across All Files in log scale of train session {train_session}',fontweight='bold')
+    plt.hist(all_data, bins=bins,range=(-50, 50), color='blue',density=True, alpha=0.7)
+    plt.title('Histogram of EEG Values Across All Files in log scale',fontweight='bold')
     plt.xlabel('EEG Value')
     plt.ylabel('Frequency')
     plt.yscale('log')
     plt.grid(True)
-    plt.savefig("/home/azorzetto/train{}/hist_log_scale.png".format(train_session))
+    path_fig=path_to_save_hist+'hist_log_scale.png'
+    plt.savefig(path_fig)
 
     plt.figure(figsize=(12, 6))
-    plt.hist(all_data, bins=bins,range=(-200, 200), color='blue',density=True, alpha=0.7)
-    plt.title(f'Histogram of EEG Values Across All Files in linear scale of train session {train_session}', fontweight='bold')
+    plt.hist(all_data, bins=bins,range=(-50, 50), color='blue',density=True, alpha=0.7)
+    plt.title('Histogram of EEG Values Across All Files in linear scale}', fontweight='bold')
     plt.xlabel('EEG Value')
     plt.ylabel('Frequency')
     plt.grid(True)
-    plt.savefig("/home/azorzetto/train{}/hist_linear_scale.png".format(train_session))
+    path_fig=path_to_save_hist+'hist_linear_scale.png'
+    plt.savefig(path_fig)
 
-def hist_computation_reconstructed(train_session, bins, path_to_model):
+def hist_computation_reconstructed(path_to_dataset, bins, path_to_model, output_path_folder):
     """
         compute the histogram of the reconstructed values contained in the train and test dataset separately and saves in the train{train_session}/RECONSTRUCTED_HIST folder 
 
         Args:
-            train_session: the number of the session taken into consideration
+            path_to_dataset: the path to load the dataset
             bins: the number of bins of the histogram
             path_to_model: path to the model used to calculate the reconstruction
+            output_path_folder: the folder to the output path 
     """
 
-    all_data=np.load('/home/azorzetto/train{}/dataset.npz'.format(train_session))
-    #all_data=np.load('/home/azorzetto/trainShuffle_jrj/dataset.npz')
+    all_data=np.load(path_to_dataset)
     train_data=all_data['train_data']
     test_data=all_data['test_data']
 
@@ -91,12 +94,11 @@ def hist_computation_reconstructed(train_session, bins, path_to_model):
     for axs in ax:
         axs.set_xlabel('EEG reconstructed values', fontsize =16)
         axs.set_ylabel('frequency', fontsize = 16)
-    fig.suptitle('Reconstructed EEG session {} in linear scale'.format(train_session), fontsize = 20, weight='bold')
+    fig.suptitle('Reconstructed EEG session in linear scale', fontsize = 20, weight='bold')
     fig.tight_layout()
 
-    optuput_path_folder='/home/azorzetto/train{}'.format(train_session)
-    os.makedirs(optuput_path_folder+'/RECONSTRUCTED_HIST', exist_ok=True)
-    png_path=optuput_path_folder+'/RECONSTRUCTED_HIST'+'/hist_linear_scale.png'
+    os.makedirs(output_path_folder+'/RECONSTRUCTED_HIST', exist_ok=True)
+    png_path=output_path_folder+'/RECONSTRUCTED_HIST'+'/hist_linear_scale.png'
     plt.savefig(png_path, format='png')
     plt.close()
 
@@ -114,14 +116,14 @@ def hist_computation_reconstructed(train_session, bins, path_to_model):
     for axs in ax:
         axs.set_xlabel('EEG reconstructed values', fontsize =16)
         axs.set_ylabel('frequency', fontsize = 16)
-    fig.suptitle('Reconstructed EEG session {} in log scale'.format(train_session), fontsize = 20,weight='bold')
+    fig.suptitle('Reconstructed EEG session in log scale', fontsize = 20,weight='bold')
     fig.tight_layout()
 
-    optuput_path_folder='/home/azorzetto/train{}'.format(train_session)
-    os.makedirs(optuput_path_folder+'/RECONSTRUCTED_HIST', exist_ok=True)
-    png_path=optuput_path_folder+'/RECONSTRUCTED_HIST'+'/hist_log_scale.png'
+    os.makedirs(output_path_folder+'/RECONSTRUCTED_HIST', exist_ok=True)
+    png_path=output_path_folder+'/RECONSTRUCTED_HIST'+'/hist_log_scale.png'
     plt.savefig(png_path, format='png')
     plt.close()
 
-train_session=14
-hist_computation(train_session= train_session, bins=150)
+path_to_save_hist='/home/azorzetto/train16/'
+path_to_dataset='/home/azorzetto/train16/dataset.npz'
+hist_computation(path_to_dataset= path_to_dataset, bins=150, path_to_save_hist=path_to_save_hist)

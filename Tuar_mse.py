@@ -71,8 +71,9 @@ def reconstruction_ability_over_epochs(train_session : int, writer, epochs : int
                 print("reconstructed trial {} of the train set is inf".format(k))
             else:
                 train_mse_array.append(F.mse_loss(x_eeg, train_rec))
-                train_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))
                 train_divergence_array.append(compute_divergence_SDTW_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))
+                train_sdtw_array.append(compute_recon_error_between_two_tensor(x_eeg, train_rec, average_channels=True, average_time_samples=True))
+                
         
         final_train_mse=np.mean(train_mse_array)
         final_train_sdtw=np.mean(train_sdtw_array)

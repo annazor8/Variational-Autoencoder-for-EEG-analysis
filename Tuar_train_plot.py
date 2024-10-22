@@ -94,11 +94,11 @@ new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2',
 train_session=13
 model_epoch=160
 
-from_trial=595
-path_to_dataset='/home/azorzetto/train{}/dataset.npz'.format(train_session)
+from_trial=12
+path_to_dataset=f'/home/azorzetto/train{train_session}/dataset.npz'
 type_data= "train_data" #or 'test_data'
 
-path_to_model='/home/azorzetto/train{}/model_weights_backup{}/model_epoch{}.pth'.format(train_session, train_session, model_epoch)
+path_to_model=f'/home/azorzetto/train{train_session}/model_weights_backup{train_session}/model_epoch{model_epoch}.pth'
 path_to_save_img=f'/home/azorzetto/train{train_session}/img_train_epoch_{model_epoch}'
 
 post_processing=False

@@ -9,7 +9,7 @@ from library.config import config_model as cm
 from library.model import hvEEGNet
 import torch
 import os
-from Tuar_plot_histogram import hist_computation
+
 
 def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_srate : int, optuput_path_folder : str, notch_filter : bool = False, time_slots : list = [(100980, 102020)]):
     plt.switch_backend('TkAgg')
@@ -92,7 +92,15 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
         plt.grid(True)
         plt.xlabel('Frequenza [Hz]',fontweight='bold', fontsize=20)
         plt.ylabel(r'PSD [$\mu$V$^2$/Hz]', fontweight='bold', fontsize=20)
-        plt.title('Mean spectrum TRIAL SPECIFIC of the original signal- channel {}'.format(channel),fontweight='bold', fontsize=20 )
+        plt.title('Mean spectrum TRIAL SPECIFIC of the original signal- channel {}'.format(channel),fontweight='bold', fontsize=30 )
+        plt.tick_params(axis='both', which='major', labelsize=16, width=2, length=10)  # Maggiori dimensioni per tick principali
+        plt.tick_params(axis='both', which='minor', labelsize=12, width=1, length=5)   # Tick minori, se presenti
+    
+        # Imposta i tick label in grassetto
+        for tick in plt.gca().get_xticklabels() + plt.gca().get_yticklabels():
+            tick.set_fontsize(16)        # Imposta dimensione del font per i tick
+            tick.set_fontweight('bold')  # Imposta il font in grassett
+    
         os.makedirs(optuput_path_folder+'/PSD_no_notch_with_reconstruction', exist_ok=True)
         output_path_html=optuput_path_folder + '/PSD_no_notch_with_reconstruction' + '/original_eeg_TRIAL_SPECIFIC_linear{}.html'.format(channel)
         output_path_png=optuput_path_folder + '/PSD_no_notch_with_reconstruction' + '/original_eeg_TRIAL_SPECIFIC_linear{}.png'.format(channel)
@@ -102,7 +110,6 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
     #-------------------------------------------------------------------------------------------------------------
     #plot the reconstructed SPECTRUM for that channel with the area shaded for the std
     for index_ch, channel in enumerate(ch_names):
-        print(index_ch)
         fig_spectrum2=plt.figure(figsize=(20, 16))
         plt.plot(f, average_reconstructed_spectrum[index_ch,:], color="red")
         plt.fill_between(f, 
@@ -112,12 +119,20 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
         plt.grid(True)
         plt.xlabel('Frequency [Hz]', fontweight='bold', fontsize=20)
         plt.ylabel(r'PSD [$\mu$V$^2$/Hz]', fontweight='bold', fontsize=20)
-        plt.title('Mean spectrum TRIAL SPECIFIC of the reconstructed signal- channel {}'.format(channel), fontweight='bold', fontsize=20)
+        plt.title('Mean spectrum TRIAL SPECIFIC of the reconstructed signal- channel {}'.format(channel), fontweight='bold', fontsize=30)
+        plt.tick_params(axis='both', which='major', labelsize=16, width=2, length=10)  # Maggiori dimensioni per tick principali
+        plt.tick_params(axis='both', which='minor', labelsize=12, width=1, length=5)   # Tick minori, se presenti
+    
+        # Imposta i tick label in grassetto
+        for tick in plt.gca().get_xticklabels() + plt.gca().get_yticklabels():
+            tick.set_fontsize(16)        # Imposta dimensione del font per i tick
+            tick.set_fontweight('bold')  # Imposta il font in grassett
+    
         output_path_html=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/reconstructed_eeg_TRIAL_SPECIFIC_linear{}.html'.format(channel)
         output_path_png=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/reconstructed_eeg_TRIAL_SPECIFIC_linear{}.png'.format(channel)
         fig_spectrum2.savefig(output_path_png, format='png')
         mpld3.save_html(fig_spectrum2, output_path_html)
-        plt.close()
+        plt.close(fig_spectrum2)
     #-------------------------------------------------------------------------------------------------------------
     #plot the original GLOBAL SPECTRUM for that channel with the area shaded for the std
     global_average_original_spectrum=np.mean(power_original_array, axis=(0, 1))
@@ -132,12 +147,19 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
     plt.grid(True)
     plt.xlabel('Frequency [Hz]', fontweight='bold', fontsize=20)
     plt.ylabel(r'PSD [$\mu$V$^2$/Hz]', fontweight='bold', fontsize=20)
-    plt.title('Mean spectrum GLOBAL of the reconstructed signal', fontweight='bold', fontsize=20)
+    plt.title('Mean spectrum GLOBAL of the reconstructed signal', fontweight='bold', fontsize=30)
+    plt.tick_params(axis='both', which='major', labelsize=16, width=2, length=10)  # Maggiori dimensioni per tick principali
+    plt.tick_params(axis='both', which='minor', labelsize=12, width=1, length=5)   # Tick minori, se presenti
+    
+    # Imposta i tick label in grassetto
+    for tick in plt.gca().get_xticklabels() + plt.gca().get_yticklabels():
+        tick.set_fontsize(16)        # Imposta dimensione del font per i tick
+        tick.set_fontweight('bold')  # Imposta il font in grassett
     output_path_html=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/original_GLOBAL_eeg_linear.html'
     output_path_png=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/original_GLOBAL_eeg_linear.png'
     fig_spectrum3.savefig(output_path_png, format='png', dpi=300)
     mpld3.save_html(fig_spectrum3, output_path_html)
-    plt.close()
+    plt.close(fig_spectrum3)
     global_average_reconstructed_spectrum=np.mean(power_reconstructed_array, axis=(0, 1))
     global_std_reconstructed_spectrum=np.std(power_reconstructed_array, axis=(0, 1))
 
@@ -152,12 +174,19 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
     plt.grid(True)
     plt.xlabel('Frequency [Hz]', fontweight='bold', fontsize=20)
     plt.ylabel(r'PSD [$\mu$V$^2$/Hz]', fontweight='bold', fontsize=20)
-    plt.title('Mean spectrum GLOBAL of the reconstructed signal', fontweight='bold', fontsize=20)
+    plt.title('Mean spectrum GLOBAL of the reconstructed signal', fontweight='bold', fontsize=30)
+    plt.tick_params(axis='both', which='major', labelsize=16, width=2, length=10)  # Maggiori dimensioni per tick principali
+    plt.tick_params(axis='both', which='minor', labelsize=12, width=1, length=5)   # Tick minori, se presenti
+    
+    # Imposta i tick label in grassetto
+    for tick in plt.gca().get_xticklabels() + plt.gca().get_yticklabels():
+        tick.set_fontsize(16)        # Imposta dimensione del font per i tick
+        tick.set_fontweight('bold')  # Imposta il font in grassett
     output_path_html=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/reconstructed_GLOBAL_eeg_linear.html'
     output_path_png=optuput_path_folder + '/PSD_no_notch_with_reconstruction'+'/reconstructed_GLOBAL_eeg_linear.png'
     fig_spectrum4.savefig(output_path_png, format='png', dpi=300)
     mpld3.save_html(fig_spectrum4, output_path_html)
-    plt.close()
+    plt.close(fig_spectrum4)
     #-------------------------------------------------------------------------------------------------------------
     #plot the original trials concatenated in time domain 
     n_rows = 22  # in each line I plot the EEG for a single channel
@@ -271,7 +300,7 @@ def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_sr
 #train_shuffle_session='_jrj2'
 #train_session="Shuffle{}".format(train_shuffle_session)
 
-train_session=12
+train_session=13
 dataset=np.load("/home/azorzetto/train{}/dataset.npz".format(train_session))
 train_data = dataset['train_data']
 test_data= dataset['test_data']
@@ -282,7 +311,7 @@ channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7
 new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'F8', 'T3', 'T4', 'T5', 'T6',
     'A2', 'Fz', 'Cz', 'Pz', 'T1', 'T2']
 
-model_epoch=94
+model_epoch=160
 path_to_model="/home/azorzetto/train{}/model_weights_backup{}/model_epoch{}.pth".format(train_session, train_session, model_epoch)
 
 #path_to_model='/home/azorzetto/train{}/model_weights_backup{}/model_epoch{}.pth'.format(train_session,train_session, model_epoch)
@@ -292,4 +321,4 @@ path_to_model="/home/azorzetto/train{}/model_weights_backup{}/model_epoch{}.pth"
 eeg_srate=250
 output_path_folder="/home/azorzetto/train{}/PSD_TRAIN_TRIAL".format(train_session)
 
-plot_average_test_PSD(ch_names=new_channel_names, test_data=train_data, path_to_model=path_to_model, eeg_srate=eeg_srate, optuput_path_folder= output_path_folder, notch_filter=False, time_slots=[(100980, 102020), (500, 1550), (13000, 14000)])
+plot_average_test_PSD(ch_names=channel_names, test_data=train_data, path_to_model=path_to_model, eeg_srate=eeg_srate, optuput_path_folder= output_path_folder, notch_filter=False, time_slots=[(100980, 102020), (500, 1550), (13000, 14000)])
