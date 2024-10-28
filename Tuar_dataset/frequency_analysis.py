@@ -1,9 +1,8 @@
 import numpy as np
-from tuar_training_utils import create_raw_mne
+from utils import create_raw_mne
 import mne
 import mpld3
 import matplotlib.pyplot as plt
-from pathlib import Path
 
 channel=['Cz']
 dataset = np.load('/home/azorzetto/train8/dataset.npz')

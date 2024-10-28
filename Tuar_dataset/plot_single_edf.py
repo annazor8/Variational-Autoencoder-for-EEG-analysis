@@ -1,4 +1,3 @@
-"Questa era una prova per vedere come cambiava il plot dopo che avevo modificato il reference al canale A1"
 import numpy as np
 import mne
 import matplotlib
@@ -7,6 +6,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import mpld3
 import torch
+
 channels_to_set_AVERAGE_MONTAGE = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
                        'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF', 'EEG T3-REF', 'EEG T4-REF',
                        'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',

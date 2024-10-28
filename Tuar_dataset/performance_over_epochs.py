@@ -3,16 +3,17 @@ import os
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-from library.analysis.dtw_analysis import compute_recon_error_between_two_tensor, compute_divergence_SDTW_recon_error_between_two_tensor
-import torch 
 from pathlib import Path
 import mpld3
-from library.config import config_model as cm
-from library.model import hvEEGNet
 import torch.nn.functional as F
 import torch
 from torch.utils.tensorboard import SummaryWriter
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from library.analysis.dtw_analysis import compute_recon_error_between_two_tensor, compute_divergence_SDTW_recon_error_between_two_tensor
+from library.config import config_model as cm
+from library.model import hvEEGNet
 
 def reconstruction_ability_over_epochs(train_session : int, writer, epochs : int):
 

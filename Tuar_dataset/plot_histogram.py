@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from library.config import config_model as cm
 from library.model import hvEEGNet
-import torch
-import os
 
 def hist_computation(path_to_dataset, bins, path_to_save_hist):
     """

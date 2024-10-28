@@ -1,11 +1,9 @@
 import mne
 import os
-import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
+import matplotlib.pyplot
 from mne.channels import make_standard_montage
-import matplotlib.pyplot as plt
 
 """
     to plot the interactive plot for EEG signal of mne

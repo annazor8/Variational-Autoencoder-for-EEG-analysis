@@ -4,15 +4,14 @@ Create a binary image which indicates the presence or absence of artifacts in th
 
 #%% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Imports
-
-import numpy as np
-import matplotlib.pyplot as plt
-import os
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+import sys
+import os
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 plot_config = dict(
     figsize = (12, 8),
     fontsize = 24,

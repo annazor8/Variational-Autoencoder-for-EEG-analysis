@@ -1,13 +1,14 @@
 import torch
-import matplotlib.pyplot as plt
 import numpy as np
-from scipy.signal import welch 
-from library.config import config_model as cm
-from library.training import train_generic
 from sklearn.decomposition import PCA
 import plotly.graph_objects as go
 import plotly as ploty
 from pathlib import Path
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from library.config import config_model as cm
+from library.training import train_generic
 
 def plot_latent_space_interactive(latent_pca, artifact_perc, file_name:str, title="PCA Latent Space", save_path=None):
     # Creiamo la traccia per il plot
@@ -98,13 +99,7 @@ array_train_embedded=[]
 for i in range(train.shape[0]):
     trial=train[i:i+1, :,:,:]
     x_embedding_train=model_hv.encode(torch.from_numpy(trial).float())[0].flatten(1) 
-    freqs_session_1, psd_session_1=welch(x_embedding_train.detach().numpy(), fs=250, nperseg=256)
-    array_train_PSD.append(psd_session_1)
     array_train_embedded.append(x_embedding_train.detach().numpy())
-
-train_mean_latet_power=np.mean(array_train_PSD, axis=0)
-train_std_latet_power=np.std(array_train_PSD, axis=0)
-
 
 #--------compute latent variables for test
 array_test_PSD=[]
@@ -112,12 +107,8 @@ array_test_embedded=[]
 for i in range(test.shape[0]):
     trial=test[i:i+1, :,:,:]
     x_embedding_test=model_hv.encode(torch.from_numpy(trial).float())[0].flatten(1) 
-    freqs_session_1, psd_session_1=welch(x_embedding_test.detach().numpy(), fs=250, nperseg=256)
-    array_test_PSD.append(psd_session_1)
     array_test_embedded.append(x_embedding_test.detach().numpy())
 
-test_mean_latet_power=np.mean(array_test_PSD, axis=0)
-test_std_latet_power=np.std(array_test_PSD, axis=0)
 
 train_latent=np.concatenate(array_train_embedded) #len(array_train_embedded)=685
 test_latent=np.concatenate(array_test_embedded)#len(array_test_embedded)=671

@@ -5,11 +5,12 @@ import mne
 import mpld3
 import matplotlib.pyplot as plt
 from scipy.signal import welch
-from library.config import config_model as cm
 from library.model import hvEEGNet
 import torch
+import sys
 import os
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from library.config import config_model as cm
 
 def plot_average_test_PSD(ch_names: list, test_data, path_to_model : str, eeg_srate : int, optuput_path_folder : str, notch_filter : bool = False, time_slots : list = [(100980, 102020)]):
     plt.switch_backend('TkAgg')

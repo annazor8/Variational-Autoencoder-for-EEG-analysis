@@ -1,15 +1,15 @@
 from collections import defaultdict
-from library.analysis import dtw_analysis
 from typing import Dict
 import numpy as np
 import random
 import os
 import mne
-import torch
-import matplotlib.pyplot as plt
-from pathlib import Path
 from numpy.typing import NDArray
 from typing import Sequence, Union, List
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from library.analysis import dtw_analysis
 
 def reconstruction_metrics(x_eeg, x_r_eeg, device):
     """

@@ -1,13 +1,15 @@
 import torch
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from library.dataset import dataset_time as ds_time
 from library.model import hvEEGNet
 from library.training import train_generic
 from library.config import config_training as ct
 from library.config import config_model as cm
-import os
 import numpy as np
 import pandas as pd 
-from tuar_training_utils import reconstruction_metrics, get_data_TUAR, leave_one_session_out
+from utils import reconstruction_metrics, get_data_TUAR, leave_one_session_out
 from torch.utils.data import DataLoader
 import pickle
 np.random.seed(43)

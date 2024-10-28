@@ -1,14 +1,11 @@
-"""
-Create a binary image which indicates the presence or absence of artifacts in the dataset
-"""
-
-#%% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
 # Imports
-
 import numpy as np
+import torch
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from library.config import config_model as cm
 from library.model import hvEEGNet
-import torch
 from library.analysis import dtw_analysis
 
 train_session=16

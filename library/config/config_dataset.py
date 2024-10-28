@@ -81,3 +81,31 @@ def get_artifact_dataset_config(type_dataset, folder_to_save = 'v2'):
     )
 
     return dataset_config
+
+def get_preprocessing_config():
+    dataset_config = dict(
+        channels_to_set = ['EEG FP1-REF', 'EEG FP2-REF', 'EEG F3-REF', 'EEG F4-REF', 'EEG C3-REF', 'EEG C4-REF',
+                       'EEG P3-REF', 'EEG P4-REF', 'EEG O1-REF', 'EEG O2-REF', 'EEG F7-REF','EEG T3-REF', 'EEG T4-REF',
+                       'EEG T5-REF', 'EEG T6-REF', 'EEG A1-REF', 'EEG A2-REF', 'EEG FZ-REF', 'EEG CZ-REF', 'EEG PZ-REF',
+                       'EEG T1-REF', 'EEG T2-REF'], 
+        split_mapping={'FP1': 'Fp1', 'FP2':'Fp2', 'F3':'F3', 'F4':'F4', 'C3':'C3', 'C4':'C4', 'P3':'P3', 'P4':'P4', 'O1':'O1', 'O2':'O2', 'F7':'F7', 'T3':'T3', 'T4':'T4', 'T5':'T5', 'T6':'T6', 'A1':'A1', 'A2':'A2', 'FZ':'Fz', 'CZ':'Cz', 'PZ':'Pz', 'T1':'T1', 'T2':'T2'},
+        new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2', 'F7', 'T3', 'T4', 'T5', 'T6', 'A1', 'A2', 'Fz', 'Cz', 'Pz', 'T1', 'T2'],
+        start_index=0,
+        end_index=None,
+        notch_filter=True,
+        sfreq = 250,
+        band_pass_filter=True,
+        notch_filter=True,
+        l_freq=0.5,
+        h_freq=100,
+        monopolar_reference=False,
+        ref_channel=['EEG A1-REF'],
+        z_score_session_wise=True,
+        min_max_normalization=False,
+        min_val=-50,
+        max_val=50,
+        z_score_cleand=False,
+        only_cleand_trials=False #to retain only the clean trials and discard the artifactual trials
+    )
+
+    return dataset_config

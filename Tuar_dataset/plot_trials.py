@@ -5,10 +5,13 @@ import matplotlib.pyplot as plt
 import torch 
 from pathlib import Path
 import mpld3
+import mne
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from library.config import config_model as cm
 from library.model import hvEEGNet
-from tuar_training_utils import normalize_to_range
-import mne
+from utils import normalize_to_range
 
 def plot_trials(path_to_dataset, path_to_save_img, path_to_model, channel_names: list, type_data : str, from_trial: int, post_processing : bool = False, original_signal_normalize : bool = False, reconstructed_signal_normalize : bool = False, min : int =-1 , max : int =1):
     """
