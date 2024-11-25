@@ -95,7 +95,6 @@ def get_preprocessing_config():
         notch_filter=True,
         sfreq = 250,
         band_pass_filter=True,
-        notch_filter=True,
         l_freq=0.5,
         h_freq=100,
         monopolar_reference=False,

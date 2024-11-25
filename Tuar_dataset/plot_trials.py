@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
 import torch 
 from pathlib import Path
 import mpld3
@@ -65,19 +66,27 @@ def plot_trials(path_to_dataset, path_to_save_img, path_to_model, channel_names:
             #raw_reconstructed_test.notch_filter(freqs=60, picks='all', method='spectrum_fit') #I apply a notch filter
             x_eeg_rec=raw_reconstructed_test.get_data()
 
+        font_properties = FontProperties(weight='bold', size=16)
         for idx_ch, ch in enumerate(channel_names):
             # Plot the original and reconstructed signal
-            fig, ax = plt.subplots(figsize = (20, 12))  # Adjust figsize for better visibility
+            fig, ax = plt.subplots(figsize = (18, 10))  # Adjust figsize for better visibility
             ax.plot(t, trial_eeg.squeeze()[idx_ch].squeeze(), label=f'Original EEG - channel {ch}', color='black', linewidth=1)
             ax.plot(t, (x_eeg_rec.squeeze()[idx_ch].squeeze()), label=f'Reconstructed EEG - channel {ch}', color='red', linewidth=1)
 
-            ax.legend(loc='upper right')
+            ax.legend(loc='upper right', prop=font_properties)
             ax.set_xlim([0, 2])
-            ax.set_xlabel('Time [s]')
-            ax.set_ylabel(r"Amplitude [$\mu$V]")
+            ax.set_xlabel('Time [s]', fontsize=20, fontweight='bold')
+            ax.set_ylabel(r"Amplitude [$\mu$V]", fontsize=20, fontweight='bold')
             ax.grid(True)
             # Adjust layout
             plt.tight_layout()
+            plt.tick_params(axis='both', which='major', labelsize=16, width=2, length=10)  # Maggiori dimensioni per tick principali
+            plt.tick_params(axis='both', which='minor', labelsize=12, width=1, length=5)   # Tick minori, se presenti
+    
+        # Imposta i tick label in grassetto
+            for tick in plt.gca().get_xticklabels() + plt.gca().get_yticklabels():
+                tick.set_fontsize(16)        # Imposta dimensione del font per i tick
+                tick.set_fontweight('bold')  # Imposta il font in grassett
             output_dir = Path(path_to_save_img)
             output_dir.mkdir(parents=True, exist_ok=True)
             png_path = output_dir / f'trial_{i}_channel_{ch}.png'
@@ -95,9 +104,9 @@ new_channel_names=['Fp1', 'Fp2', 'F3', 'F4', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2',
     'A2', 'Fz', 'Cz', 'Pz', 'T1', 'T2']
 
 train_session=13
-model_epoch=160
+model_epoch=66
 
-from_trial=12
+from_trial=0
 path_to_dataset=f'/home/azorzetto/train{train_session}/dataset.npz'
 type_data= "train_data" #or 'test_data'
 
